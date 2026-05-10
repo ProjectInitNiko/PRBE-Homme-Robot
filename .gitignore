@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Conda envs (locales, jamais commit)
+envs/
+
+# Dépendance externe : on ne redistribue pas HMG (BSD-3, à cloner soi-même)
+external/
+
+# Mannequins générés à la volée hors de examples/
+*.urdf
+!examples/*.urdf
