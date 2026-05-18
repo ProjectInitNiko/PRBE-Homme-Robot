@@ -59,7 +59,7 @@ Le format **URDF (Unified Robot Description Format)** est le standard XML de rep
 - Les articulations humaines (épaule, hanche) ont 3 DoF sphériques → nécessite des **virtual links** intermédiaires (un lien fictif par DoF)
 - Cette extension non-standard est documentée dans l'Annexe B de Latella 2019
 
-**Note sur RoboDK :** RoboDK ne dispose pas de support URDF natif. Une étape de **conversion Python** est nécessaire pour importer un modèle URDF dans l'environnement RoboDK (confirmé par Tola & Corke 2023, arXiv:2308.00514).
+**Note sur RoboDK :** RoboDK ne dispose pas de support URDF natif. Une étape de **conversion Python** est nécessaire pour importer un modèle URDF dans l'environnement RoboDK (confirmé par Tola & Corke 2023, arXiv:2308.00514 — https://arxiv.org/abs/2308.00514).
 
 ---
 
@@ -67,7 +67,7 @@ Le format **URDF (Unified Robot Description Format)** est le standard XML de rep
 
 ### 3.1 Human Model Generator (HMG) — IIT
 
-- **Source :** [github.com/gbionics/human-model-generator](https://github.com/gbionics/human-model-generator)
+- **Source :** https://github.com/gbionics/human-model-generator
 - **Licence :** BSD-3 (utilisation libre y compris académique)
 - **Organisation :** Fondazione Istituto Italiano di Tecnologia (IIT), Dynamic Interaction Control Lab
 - **Description :** Générateur Python de mannequin humain complet au format URDF, scalable via 12 paramètres anthropométriques (taille, masse, circonférences)
@@ -77,7 +77,9 @@ Le format **URDF (Unified Robot Description Format)** est le standard XML de rep
 
 ### 3.2 SMPL / SMPL-X (MPI Tübingen)
 
-- **Source :** [smpl.is.tue.mpg.de](https://smpl.is.tue.mpg.de/)
+- **Source SMPL :** https://smpl.is.tue.mpg.de/
+- **Source SMPL-X :** https://smpl-x.is.tue.mpg.de/
+- **Code GitHub SMPL-X :** https://github.com/vchoutas/smplx
 - **Licence :** Académique non commerciale
 - **Description :** Modèle statistique du corps humain appris sur 1700+ scans. Paramétré par un vecteur de **forme** (10 valeurs, variations morphologiques de la population) et un vecteur de **pose** (72 valeurs = 24 joints × 3 axes)
 - **SMPL-X** : extension avec mains (26 DoF/main) et expressions faciales
@@ -86,6 +88,7 @@ Le format **URDF (Unified Robot Description Format)** est le standard XML de rep
 
 ### 3.3 MakeHuman (open source)
 
+- **Site :** http://www.makehumancommunity.org/
 - **Licence :** GNU Affero GPL
 - **Description :** Logiciel de création de mannequins humains paramétriques, export STL/OBJ
 - **Pertinence PRBE :** Moins adapté (pas de URDF direct, pipeline plus lourd)
@@ -147,7 +150,8 @@ for joints in motion_sequence:
     time.sleep(1/30)  # 30 fps
 ```
 
-**Projet de référence :** KinectPython (Ang, github.com/KonstantinosAng/KinectPython) — capture Kinect2 en temps réel → RoboDK pour coordination H-R synchronisée.
+**Projet de référence :** KinectPython (Ang) — capture Kinect2 en temps réel → RoboDK pour coordination H-R synchronisée.
+https://github.com/KonstantinosAng/KinectPython
 
 ---
 
@@ -183,7 +187,8 @@ Workflow pour l'approche "import pièces séparées" (fichiers disponibles : dos
 
 ### 5.3 Import URDF (via Add-in)
 
-RoboDK propose un [Import URDF Add-in](https://robodk.com/addin/com.robodk.app.importurdf) permettant d'importer directement un fichier URDF comme mécanisme articulé. C'est la voie privilégiée avec le mannequin HMG :
+RoboDK propose un Import URDF Add-in permettant d'importer directement un fichier URDF comme mécanisme articulé. C'est la voie privilégiée avec le mannequin HMG :
+https://robodk.com/addin/com.robodk.app.importurdf
 
 - Pré-requis : `Niko_v1.urdf` + dossiers de meshes accessibles
 - Points de vigilance : inertie valide (définie positive ✓ confirmé), limites articulaires en radians, chemins relatifs des meshes
@@ -257,21 +262,77 @@ Décision prise en session de travail (mai 2026) :
 ## 8. Références
 
 1. **Kim, S., Kim, C., You, B., Oh, S.** (2009). *Stable whole-body motion generation for humanoid robots to imitate human motions.* IEEE/RSJ IROS 2009, St. Louis.
+   https://ieeexplore.ieee.org/document/5354304
 
-2. **Latella, C.** (2019). *Human Whole-Body Dynamics Estimation for Enhancing Physical Human-Robot Interaction.* Thèse de doctorat, Università di Genova / IIT. arXiv:1912.01136.
+2. **Latella, C.** (2019). *Human Whole-Body Dynamics Estimation for Enhancing Physical Human-Robot Interaction.* Thèse de doctorat, Università di Genova / IIT.
+   https://arxiv.org/abs/1912.01136
 
-3. **Tola, D., Corke, P.** (2023). *Understanding URDF: A Dataset and Analysis.* Aarhus University / QUT. arXiv:2308.00514.
+3. **Tola, D., Corke, P.** (2023). *Understanding URDF: A Dataset and Analysis.* Aarhus University / QUT.
+   https://arxiv.org/abs/2308.00514
 
-4. **Maurice, P., Padois, V., Measson, Y., Bidaud, P.** (2019). *Digital Human Modeling for Collaborative Robotics.* In: *DHM and Posturography*, Elsevier. HAL: hal-02389726.
+4. **Maurice, P., Padois, V., Measson, Y., Bidaud, P.** (2019). *Digital Human Modeling for Collaborative Robotics.* In: *DHM and Posturography*, Elsevier.
+   https://hal.science/hal-02389726
 
-5. **RoboDK Python API Documentation.** https://robodk.com/doc/en/PythonAPI/index.html
+5. **RoboDK Python API Documentation.**
+   https://robodk.com/doc/en/PythonAPI/index.html
 
-6. **RoboDK-API GitHub.** https://github.com/RoboDK/RoboDK-API
+6. **RoboDK-API GitHub.**
+   https://github.com/RoboDK/RoboDK-API
 
-7. **RoboDK Import URDF Add-in.** https://robodk.com/addin/com.robodk.app.importurdf
+7. **RoboDK Import URDF Add-in.**
+   https://robodk.com/addin/com.robodk.app.importurdf
 
-8. **Ang, K.** (2021). *KinectPython — Human-Robot Collaboration via Kinect2 and RoboDK.* GitHub. https://github.com/KonstantinosAng/KinectPython
+8. **RoboDK — Inverse Kinematics Blog.**
+   https://robodk.com/blog/inverse-kinematics-in-robotics-what-you-need-to-know/
 
-9. **Pavlakos, G. et al.** (2019). *Expressive Body Capture: 3D Hands, Face, and Body from a Single Image (SMPL-X).* CVPR 2019. https://smpl-x.is.tue.mpg.de/
+9. **Ang, K.** (2021). *KinectPython — Human-Robot Collaboration via Kinect2 and RoboDK.*
+   https://github.com/KonstantinosAng/KinectPython
 
-10. **Human Model Generator (HMG).** Fondazione IIT, Dynamic Interaction Control Lab. https://github.com/gbionics/human-model-generator
+10. **Pavlakos, G. et al.** (2019). *Expressive Body Capture: 3D Hands, Face, and Body from a Single Image (SMPL-X).* CVPR 2019.
+    https://smpl-x.is.tue.mpg.de/
+    https://github.com/vchoutas/smplx
+
+11. **Human Model Generator (HMG).** Fondazione IIT, Dynamic Interaction Control Lab.
+    https://github.com/gbionics/human-model-generator
+
+---
+
+## 9. Récapitulatif des ressources en ligne
+
+### Outils de simulation
+
+| Ressource | URL |
+|-----------|-----|
+| RoboDK — site officiel | https://robodk.com/ |
+| RoboDK — Python API docs | https://robodk.com/doc/en/PythonAPI/index.html |
+| RoboDK — API GitHub | https://github.com/RoboDK/RoboDK-API |
+| RoboDK — Import URDF Add-in | https://robodk.com/addin/com.robodk.app.importurdf |
+| RoboDK — IK blog | https://robodk.com/blog/inverse-kinematics-in-robotics-what-you-need-to-know/ |
+| RoboDK — singularités | https://robodk.com/blog/robot-singularity-avoidance-9-strategies-to-keep-robots-in-control/ |
+
+### Modèles humains open source
+
+| Ressource | URL |
+|-----------|-----|
+| HMG — Human Model Generator (IIT) | https://github.com/gbionics/human-model-generator |
+| SMPL — site officiel | https://smpl.is.tue.mpg.de/ |
+| SMPL-X — site officiel | https://smpl-x.is.tue.mpg.de/ |
+| SMPL-X — code GitHub | https://github.com/vchoutas/smplx |
+| MakeHuman — site officiel | http://www.makehumancommunity.org/ |
+| human-gazebo (IIT) | https://github.com/gbionics/human-gazebo |
+
+### Projets de référence H-R
+
+| Ressource | URL |
+|-----------|-----|
+| KinectPython (Kinect2 + RoboDK) | https://github.com/KonstantinosAng/KinectPython |
+| RoboDK Plug-In Interface | https://github.com/RoboDK/Plug-In-Interface |
+
+### Papiers scientifiques
+
+| Papier | URL |
+|--------|-----|
+| Latella 2019 — thèse IIT (arXiv:1912.01136) | https://arxiv.org/abs/1912.01136 |
+| Tola & Corke 2023 — URDF dataset (arXiv:2308.00514) | https://arxiv.org/abs/2308.00514 |
+| Maurice et al. 2019 — DHM collaborative robotics (HAL) | https://hal.science/hal-02389726 |
+| Kim et al. 2009 — IROS (IEEE Xplore) | https://ieeexplore.ieee.org/document/5354304 |
