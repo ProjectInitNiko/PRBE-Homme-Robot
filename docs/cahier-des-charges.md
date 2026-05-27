@@ -153,6 +153,22 @@ Pour les scenarios retenus :
 - Les bras sont utiles pour le scenario de synchronisation, lorsque l'operateur assemble ou recupere des pieces.
 - La tete, les doigts et les mouvements internes fins du buste ne sont pas prioritaires.
 
+Les degres de liberte retenus correspondent uniquement a des rotations articulaires, sans prise en compte des degres de liberte en deplacement.
+
+| Segment | DDL | Detail |
+|---|---:|---|
+| Buste -> Cuisse (x2) | 3 par jambe | Mouvements fluides et courbes |
+| Cuisse -> Mollet (x2) | 1 par jambe | Flexion genou, type pivot |
+| Cheville -> Pied (x2) | 1 par jambe | Pivot cheville |
+| **Total jambes** | **10** | |
+| Epaule (x2) | 3 par bras | Rotation de l'epaule |
+| Coude (x2) | 1 par bras | Flexion du coude |
+| Poignet (x2) | 2 par bras | Orientation du poignet |
+| **Total bras** | **12** | 6 DDL par bras, donc 12 DDL pour les deux bras |
+| **Total retenu** | **22** | Jambes et bras uniquement |
+
+Pour le scenario 1, le mannequin utilise uniquement les membres inferieurs afin de representer les postures et deplacements de l'operateur. Pour le scenario 2, le mannequin utilise les membres inferieurs et superieurs, car l'operateur doit se deplacer puis recuperer une piece dans la zone de transfert.
+
 La version v1 du demonstrateur privilegie une cinematique simplifiee et robuste plutot qu'un corps humain completement articule.
 
 ## 5. Securite et references normatives
@@ -194,26 +210,32 @@ Ces distances sont les valeurs validees pour le scenario de projet. Elles devron
 
 ## 9. Planning previsionnel
 
-| Semaine | Dates | Objectif principal |
+Le projet a debute par la reunion de lancement du **24 avril** et se termine par la soutenance prevue le **24 juin**. Le planning ci-dessous reprend les grandes etapes issues des reunions et des presentations du 13 mai et du 20 mai.
+
+| Periode | Travail realise ou prevu | Elements issus des reunions |
 |---|---|---|
-| S1 | 20-26 mai | Finaliser le cahier des charges, les scenarios, les exigences et le Gantt |
-| S2 | 27 mai-2 juin | Finaliser les DDL du mannequin et completer l'etat de l'art |
-| S3 | 3-9 juin | Developper la structure cinematique et tester l'integration RoboDK |
-| S4 | 10-16 juin | Simuler les articulations et valider les scenarios |
-| S5 | 17-23 juin | Implementer les zones de securite, ralentissements et arrets |
-| S6 | 24-30 juin | Finaliser, corriger et preparer la soutenance |
+| 24 avril | Lancement du projet, analyse du sujet et identification du verrou principal : associer un mannequin humain a un modele cinematique exploitable dans RoboDK. | Le projet est oriente recherche ; il faut analyser le modele existant, definir les DDL utiles et comparer les approches possibles : points analytiques, base de donnees ou cinematique inverse. |
+| 25 avril-12 mai | Recherche de solutions existantes, prise en main des contraintes RoboDK/Python et premiere structuration des scenarios homme-robot. | Les documentations fournies ne suffisent pas : une recherche complementaire est necessaire, ainsi qu'une organisation du travail via GitHub. |
+| 13 mai | Premiere presentation des scenarios et des exigences fonctionnelles. | Les modes d'interaction sont clarifies : coexistence, synchronisation, cooperation, collaboration. Les normes ISO/TS 15066, ISO 10218-1 et ISO 10218-2 sont identifiees. RoboDK doit importer le corps humain partie par partie afin de permettre les mouvements. |
+| 14-19 mai | Reprise des scenarios, des exigences et des choix de modelisation a partir des remarques de reunion. | Le mannequin doit rester simplifie, compatible RoboDK/API Python, et permettre les mouvements simples des membres inferieurs et superieurs. |
+| 20 mai | Validation des deux scenarios retenus et des premiers choix cinematiques. | Les scenarios retenus sont la coexistence et la synchronisation. Les distances de securite sont fixees a 1 m pour le ralentissement et 0,5 m pour l'arret. L'approche retenue pour le mannequin est une cinematique classique, sans SMPL. |
+| 21-31 mai | Finalisation du cahier des charges, du Gantt, des exigences et du tableau des DDL. | Le cahier des charges doit inclure les scenarios, les exigences, le perimetre, les references normatives, le planning et une repartition explicite des taches. |
+| 1-7 juin | Finalisation de l'etat de l'art, formulation mathematique de la cinematique et tests d'import du mannequin. | Les articles partages par les encadrants et les sources URDF/RoboDK servent a justifier les choix techniques. |
+| 8-14 juin | Developpement de la structure cinematique et des scripts de pilotage dans RoboDK. | Les tests doivent verifier que le mannequin est exploitable et que les DDL retenus suffisent pour les scenarios. |
+| 15-21 juin | Implementation et validation des scenarios de coexistence et de synchronisation. | La simulation doit montrer les zones de securite, les ralentissements/arrets et la coordination temporelle entre robot et operateur. |
+| 22-24 juin | Finalisation du rapport, preparation du support de soutenance et repetition. | Le rapport doit raconter une histoire claire : objectifs et contraintes, developpement, resultats, puis perspectives futures. |
 
 ## 10. Repartition provisoire des taches
 
-La repartition doit montrer que les travaux sont menes en parallele par les trois membres de l'equipe.
+La repartition des taches est organisee pour montrer que les travaux avancent en parallele jusqu'a la soutenance du 24 juin, comme demande lors de la reunion du 20 mai.
 
 | Membre | Responsabilites principales |
 |---|---|
-| Niko | Import RoboDK, tests URDF, validation technique du mannequin |
-| Luc | Normes de securite, exigences liees aux scenarios, donnees ALIX |
-| Alex | Structuration du cahier des charges, planning, Gantt, integration documentaire |
+| Niko | Modelisation technique du mannequin, generation ou adaptation URDF, import dans RoboDK, tests des DDL et validation du comportement cinematique. |
+| Luc | Analyse des normes de securite, definition des zones de ralentissement et d'arret, formalisation des contraintes liees aux scenarios et aux donnees ALIX. |
+| Alex | Structuration du cahier des charges, formalisation des scenarios, planning/Gantt, integration documentaire, rapport et support de soutenance. |
 
-Cette repartition est provisoire et pourra etre ajustee selon les disponibilites et les resultats des premiers tests.
+Les trois axes restent lies : les choix de DDL et les tests RoboDK alimentent la formulation mathematique, les contraintes normatives encadrent les scenarios, et la documentation est mise a jour au fur et a mesure des validations en reunion.
 
 ## 12. Criteres de reussite du projet
 
