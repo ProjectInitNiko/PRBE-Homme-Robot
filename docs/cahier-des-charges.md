@@ -176,51 +176,6 @@ Les distances retenues pour la simulation sont :
 
 Ces distances sont les valeurs validees pour le scenario de projet. Elles devront etre justifiees dans le rapport par rapport aux normes et aux contraintes reelles de la plateforme ALIX.
 
-## 6. Exigences non fonctionnelles et contraintes
-
-### 6.1 Exigences de simulation
-
-| ID | Exigence | Priorite |
-|---|---|---|
-| SIM-NF1 | La simulation doit etre comprehensible visuellement par un observateur externe | Haute |
-| SIM-NF2 | Les zones de securite doivent etre identifiables dans RoboDK | Haute |
-| SIM-NF3 | Les comportements du robot doivent etre reproductibles d'une execution a l'autre | Haute |
-| SIM-NF4 | Les scripts doivent pouvoir etre relances et modifies par les membres de l'equipe | Moyenne |
-| SIM-NF5 | Les hypotheses utilisees doivent etre explicites dans le rapport | Haute |
-
-### 6.2 Contraintes materielles
-
-- Le projet s'appuie sur la plateforme ALIX et le robot Myrmidon 100.
-- Les detecteurs de presence existants sont privilegies ; l'ajout de materiel n'est pas l'objectif principal.
-- Les donnees exactes du robot et des capteurs doivent etre collectees ou estimees de maniere justifiee.
-
-### 6.3 Contraintes logicielles
-
-- RoboDK est l'environnement de simulation cible.
-- Les scripts de generation, post-traitement et pilotage sont developpes en Python.
-- Le format URDF est utilise pour decrire le mannequin humain.
-- Les dependances externes doivent rester documentees et installables par l'equipe.
-
-### 6.4 Contraintes humaines et planning
-
-- Le projet est mene sur une periode courte, jusqu'a la soutenance de fin juin.
-- Les taches doivent etre reparties pour permettre un travail en parallele.
-- Les choix techniques doivent rester compatibles avec le temps disponible et les competences de l'equipe.
-
-## 7. Donnees a collecter
-
-Pour rendre la simulation plus realiste, les donnees suivantes doivent etre recuperees ou estimees :
-
-| Donnee | Utilite | Responsable propose |
-|---|---|---|
-| Dimensions de la zone ALIX | Placement des zones dans RoboDK | Equipe |
-| Caracteristiques du Myrmidon 100 | Vitesse, encombrement, trajectoires | Equipe |
-| Vitesse TCP du robot | Calcul et parametrage securite | Equipe |
-| Temps d'arret du robot | Validation distance d'arret | Equipe |
-| Type et portee des capteurs de presence | Detection humain | Equipe |
-| Position des portes et passages | Scenario coexistence | Equipe |
-| Capacite de la zone de depot | Scenario synchronisation | Equipe |
-
 ## 8. Livrables attendus
 
 ### Livrables intermediaires
