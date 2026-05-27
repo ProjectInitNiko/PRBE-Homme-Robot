@@ -130,6 +130,26 @@ graph TD
 Les liaisons en **pointillés gris** sont figées (rigides) ; les flèches pleines
 portent les 22 degrés de liberté actifs.
 
+### Schéma cinématique normalisé (liaisons)
+
+L'arbre ci-dessus reflète la **décomposition de calcul** (URDF) : chaque rotule y
+apparaît comme trois pivots mono-axe successifs. Le **schéma cinématique normalisé**
+(NF EN ISO 3952), lui, représente chaque articulation par sa **liaison** : la rotule
+(3 rotations) n'est qu'**un seul symbole**, pas trois pivots.
+
+![Schéma cinématique normalisé du mannequin humain](img/schema-cinematique-mannequin.svg)
+
+| Articulation | Liaison normalisée | DDL |
+|---|---|---|
+| Épaule, Hanche | **Rotule (sphérique)** | 3 rotations |
+| Coude, Genou, Cheville | **Pivot** | 1 rotation |
+| Poignet | **Rotule à doigt (sphérique à doigt)** | 2 rotations |
+| Épine, cou, tête, clavicules, doigts | **Encastrement** | 0 (solide rigide) |
+
+> Le tronc (épine + cou + tête + clavicules encastrés) forme **un seul solide
+> rigide**. La décomposition en pivots de l'URDF reste l'outil de calcul ; le schéma
+> de liaisons est la représentation mécanique formelle attendue au rapport.
+
 ### Base flottante
 
 Le bassin n'est pas ancré au monde : sa pose est paramétrée par
