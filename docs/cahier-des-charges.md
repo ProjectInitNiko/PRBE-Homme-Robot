@@ -126,7 +126,6 @@ L'objectif est de montrer une vraie synchronisation temporelle entre le robot et
 - L'operateur recupere la piece dans la fenetre temporelle prevue.
 - Le robot et l'operateur ne se trouvent pas simultanement dans la zone de transfert.
 - La securite reste prioritaire sur la synchronisation.
-- Le scenario illustre une activite temporellement coordonnee, et pas seulement une sequence independante de taches.
 
 ## 4. Modele humain
 
