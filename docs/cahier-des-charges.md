@@ -217,16 +217,6 @@ La repartition doit montrer que les travaux sont menes en parallele par les troi
 
 Cette repartition est provisoire et pourra etre ajustee selon les disponibilites et les resultats des premiers tests.
 
-## 11. Risques identifies
-
-| Risque | Impact | Mesure de reduction |
-|---|---|---|
-| Import URDF incomplet dans RoboDK | Bloque la simulation du mannequin | Tester rapidement `Niko_v1.urdf`, puis simplifier le modele si necessaire |
-| Trop grand nombre de DDL | IK instable ou difficile a piloter | Figer l'epine et commencer par une chaine reduite |
-| Donnees ALIX incompletes | Distances et vitesses approximatives | Utiliser des hypotheses explicites puis les remplacer par les valeurs reelles |
-| Planning court | Demonstrateur incomplet | Prioriser coexistence + synchronisation simple |
-| Normes difficiles a exploiter | Justification securite fragile | Se limiter aux exigences directement utiles au projet |
-
 ## 12. Criteres de reussite du projet
 
 Le projet sera considere reussi si :
