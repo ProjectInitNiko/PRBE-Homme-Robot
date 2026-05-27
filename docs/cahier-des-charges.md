@@ -31,12 +31,12 @@ Les modes de cooperation et de collaboration directe ne font pas partie du perim
 Le projet utilise :
 
 - **RoboDK** pour la simulation robotique.
-- **Python** pour l'automatisation et le pilotage.
+- **Python** pour le pilotage.
 - **URDF** pour la description du mannequin humain.
 - **Human Model Generator (HMG)** pour generer un mannequin anthropometrique.
 - Les donnees disponibles de la plateforme **ALIX** et du robot **Myrmidon 100**.
 
-Le mannequin humain sera d'abord simplifie pour garantir une integration realiste dans RoboDK. La premiere version technique se concentre sur une chaine cinematique reduite, avec priorite au bras droit et a la validation de l'import URDF.
+Le mannequin humain sera d'abord simplifie pour garantir une integration realiste dans RoboDK.
 
 ### 2.3 Hors perimetre
 
