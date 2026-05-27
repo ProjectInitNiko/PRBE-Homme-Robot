@@ -82,7 +82,7 @@ L'objectif est d'assurer que le robot adapte son comportement en fonction de la 
 
 - La simulation montre visuellement les zones de ralentissement et d'arret.
 - Le comportement du robot change lorsque l'humain entre dans les zones critiques.
-- Le cas de blocage d'une porte est modelise par une logique temporelle simple.
+- Le cas de blocage d'une porte ne doit pas conduire a l'arret de l'humain et du robot sans fin.
 
 ### 3.2 Scenario 2 - Synchronisation
 
@@ -114,7 +114,6 @@ L'objectif est de reduire les temps d'inactivite de l'operateur en coordonnant l
 | ID | Exigence | Priorite |
 |---|---|---|
 | SYNC-F1 | Representer une zone de stock, une zone de depot et une zone de travail operateur | Haute |
-| SYNC-F2 | Modeliser l'etat de la zone de depot : libre, occupee, saturee | Haute |
 | SYNC-F3 | Limiter le nombre de lots simultanes dans la zone operateur | Haute |
 | SYNC-F4 | Faire attendre le robot si la zone de depot est saturee | Haute |
 | SYNC-F5 | Appliquer les regles de securite de coexistence pendant la livraison | Haute |
@@ -137,14 +136,13 @@ Le projet ne vise pas une simulation biomecanique exhaustive. Le modele doit res
 
 ### 4.2 Choix de modelisation
 
-Le mannequin est genere a partir de HMG sous forme d'un fichier URDF. La premiere version disponible est `examples/Niko_v1.urdf`.
+Le mannequin est genere a partir de HMG sous forme d'un fichier URDF.
 
 Pour la demonstration technique, les choix actuels sont :
 
 - Utiliser un mannequin anthropometrique scalable.
 - Figer l'epine pour reduire le nombre de degres de liberte.
 - Valider d'abord l'import RoboDK avant d'etendre le modele.
-- Piloter prioritairement le bras droit pour les gestes de manipulation.
 
 ### 4.3 Degres de liberte utiles
 
@@ -181,8 +179,7 @@ Ces distances sont les valeurs validees pour le scenario de projet. Elles devron
 ### Livrables intermediaires
 
 - Cahier des charges valide.
-- Etat de l'art argumente.
-- Formulation cinematique du mannequin.
+- Formulation mathematique cinematique du mannequin.
 - Import du mannequin humain dans RoboDK.
 - Demonstrateur simple du scenario de coexistence.
 - Demonstrateur simple du scenario de synchronisation.
@@ -225,4 +222,4 @@ Le projet sera considere reussi si :
 - Les deux scenarios retenus sont clairement formalises.
 - La simulation montre des comportements de securite coherents : ralentissement, arret, attente.
 - Le scenario de synchronisation illustre une coordination temporelle entre robot et operateur.
-- Les choix techniques sont justifies par l'etat de l'art, les contraintes RoboDK et les normes de securite.
+- Les choix techniques sont justifies par les exigences, les contraintes RoboDK et les normes de securite.
