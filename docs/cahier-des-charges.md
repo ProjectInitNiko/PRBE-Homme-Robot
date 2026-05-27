@@ -34,7 +34,7 @@ Le projet utilise :
 - **Python** pour le pilotage.
 - **URDF** pour la description du mannequin humain.
 - **Human Model Generator (HMG)** pour generer un mannequin anthropometrique.
-- Les donnees disponibles de la plateforme **ALIX** et du robot **Myrmidon 100**.
+- Les donnees disponibles de la plateforme **ALIX** et du robot **AMR Mir100**.
 
 Le mannequin humain sera d'abord simplifie pour garantir une integration realiste dans RoboDK.
 
@@ -169,8 +169,6 @@ Les degres de liberte retenus correspondent uniquement a des rotations articulai
 
 Pour le scenario 1, le mannequin utilise uniquement les membres inferieurs afin de representer les postures et deplacements de l'operateur. Pour le scenario 2, le mannequin utilise les membres inferieurs et superieurs, car l'operateur doit se deplacer puis recuperer une piece dans la zone de transfert.
 
-La version v1 du demonstrateur privilegie une cinematique simplifiee et robuste plutot qu'un corps humain completement articule.
-
 ## 5. Securite et references normatives
 
 Le projet s'appuie sur les references suivantes :
@@ -210,20 +208,21 @@ Ces distances sont les valeurs validees pour le scenario de projet. Elles devron
 
 ## 9. Planning previsionnel
 
-Le projet a debute par la reunion de lancement du **24 avril** et se termine par la soutenance prevue le **24 juin**. Le planning ci-dessous reprend les grandes etapes issues des reunions et des presentations du 13 mai et du 20 mai.
+Le projet a debute par la reunion de lancement du **24 avril** et se termine par la soutenance prevue le **24 juin**. Le planning ci-dessous est construit pour etre repris ensuite sous forme de diagramme de Gantt : chaque periode precise les taches a realiser, les livrables attendus et la repartition entre les membres du groupe.
 
-| Periode | Travail realise ou prevu | Elements issus des reunions |
-|---|---|---|
-| 24 avril | Lancement du projet, analyse du sujet et identification du verrou principal : associer un mannequin humain a un modele cinematique exploitable dans RoboDK. | Le projet est oriente recherche ; il faut analyser le modele existant, definir les DDL utiles et comparer les approches possibles : points analytiques, base de donnees ou cinematique inverse. |
-| 25 avril-12 mai | Recherche de solutions existantes, prise en main des contraintes RoboDK/Python et premiere structuration des scenarios homme-robot. | Les documentations fournies ne suffisent pas : une recherche complementaire est necessaire, ainsi qu'une organisation du travail via GitHub. |
-| 13 mai | Premiere presentation des scenarios et des exigences fonctionnelles. | Les modes d'interaction sont clarifies : coexistence, synchronisation, cooperation, collaboration. Les normes ISO/TS 15066, ISO 10218-1 et ISO 10218-2 sont identifiees. RoboDK doit importer le corps humain partie par partie afin de permettre les mouvements. |
-| 14-19 mai | Reprise des scenarios, des exigences et des choix de modelisation a partir des remarques de reunion. | Le mannequin doit rester simplifie, compatible RoboDK/API Python, et permettre les mouvements simples des membres inferieurs et superieurs. |
-| 20 mai | Validation des deux scenarios retenus et des premiers choix cinematiques. | Les scenarios retenus sont la coexistence et la synchronisation. Les distances de securite sont fixees a 1 m pour le ralentissement et 0,5 m pour l'arret. L'approche retenue pour le mannequin est une cinematique classique, sans SMPL. |
-| 21-31 mai | Finalisation du cahier des charges, du Gantt, des exigences et du tableau des DDL. | Le cahier des charges doit inclure les scenarios, les exigences, le perimetre, les references normatives, le planning et une repartition explicite des taches. |
-| 1-7 juin | Finalisation de l'etat de l'art, formulation mathematique de la cinematique et tests d'import du mannequin. | Les articles partages par les encadrants et les sources URDF/RoboDK servent a justifier les choix techniques. |
-| 8-14 juin | Developpement de la structure cinematique et des scripts de pilotage dans RoboDK. | Les tests doivent verifier que le mannequin est exploitable et que les DDL retenus suffisent pour les scenarios. |
-| 15-21 juin | Implementation et validation des scenarios de coexistence et de synchronisation. | La simulation doit montrer les zones de securite, les ralentissements/arrets et la coordination temporelle entre robot et operateur. |
-| 22-24 juin | Finalisation du rapport, preparation du support de soutenance et repetition. | Le rapport doit raconter une histoire claire : objectifs et contraintes, developpement, resultats, puis perspectives futures. |
+| Periode | Objectif de la periode | Niko | Luc | Alex | Livrable / jalon |
+|---|---|---|---|---|---|
+| 24 avril | Lancement du projet et cadrage du besoin | Identifier les contraintes techniques du mannequin et de RoboDK | Identifier les contraintes liees a la securite homme-robot | Structurer les notes de lancement et organiser le depot GitHub | Reunion de lancement, objectifs generaux fixes |
+| 25 avril-5 mai | Recherche preliminaire et prise en main du sujet | Rechercher des solutions de mannequin humain et de modelisation cinematique | Rechercher les premieres references sur les interactions H-R et les normes | Regrouper les sources, organiser la documentation et preparer une premiere synthese | Base documentaire initiale |
+| 6-12 mai | Preparation de la premiere presentation projet | Etudier les possibilites d'import ou de reconstruction du mannequin dans RoboDK | Formaliser les premiers scenarios et les premiers risques de securite | Mettre en forme la presentation du 13 mai et les exigences initiales | Presentation du 13 mai preparee |
+| 13 mai | Presentation intermediaire et clarification du perimetre | Presenter les contraintes RoboDK et les pistes de modelisation | Presenter les modes d'interaction et les normes a etudier | Presenter le contexte, les scenarios et les exigences fonctionnelles | Scenarios et exigences discutes avec les encadrants |
+| 14-19 mai | Reprise apres remarques de la reunion du 13 mai | Approfondir la solution d'import partie par partie et les besoins en DDL | Approfondir ISO/TS 15066, ISO 10218-1 et ISO 10218-2 | Corriger la structuration des scenarios et preparer le cahier des charges | Version de travail du cahier des charges |
+| 20 mai | Validation des scenarios et des choix principaux | Valider l'approche cinematique classique et les DDL utiles | Valider les distances de securite : ralentissement a 1 m, arret a 0,5 m | Integrer les decisions de reunion dans le cahier des charges et le planning | Deux scenarios retenus : coexistence et synchronisation |
+| 21-31 mai | Finalisation du cahier des charges et du planning | Finaliser le tableau des DDL et les besoins techniques RoboDK | Finaliser les exigences de securite et les criteres de validation | Finaliser le cahier des charges, le planning et la repartition des taches | Cahier des charges valide |
+| 1-7 juin | Etat de l'art et formulation mathematique | Formaliser la cinematique du mannequin et preparer les tests URDF/RoboDK | Relier les normes aux scenarios et aux zones de securite | Integrer l'etat de l'art et la formulation mathematique au rapport | Etat de l'art et formulation cinematique |
+| 8-14 juin | Developpement technique et premiers tests de simulation | Generer ou adapter le mannequin URDF, tester l'import et le pilotage dans RoboDK | Verifier les comportements de securite attendus dans les scenarios | Documenter les tests, les choix techniques et les limites rencontrees | Mannequin exploitable et premiers scripts |
+| 15-21 juin | Integration et validation des deux scenarios | Implementer ou ajuster les animations dans RoboDK | Valider ralentissement, arret, attente et synchronisation temporelle | Mettre a jour le rapport avec les resultats et captures de simulation | Demonstrateurs coexistence et synchronisation |
+| 22-24 juin | Finalisation avant soutenance | Corriger les derniers points techniques et preparer la demonstration | Verifier la coherence securite/normes dans le rapport et la presentation | Finaliser le rapport, le support de soutenance et coordonner la repetition | Rapport final, support et soutenance du 24 juin |
 
 ## 10. Repartition provisoire des taches
 
