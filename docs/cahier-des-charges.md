@@ -231,48 +231,48 @@ gantt
     axisFormat  %d/%m
 
     section Planning global
-    S0 - Lancement du projet                         :s0, 2026-04-24, 3d
-    S1 - Recherche préliminaire                      :s1, 2026-04-27, 7d
-    S2 - Premiers scénarios et présentation          :s2, 2026-05-04, 7d
-    S3 - Clarification scénarios et normes           :s3, 2026-05-11, 7d
-    S4 - Validation scénarios, DDL et sécurité       :s4, 2026-05-18, 7d
-    S5 - Cahier des charges, état de l'art, maths    :s5, 2026-05-25, 14d
-    S6 - Développement technique et premiers tests   :s6, 2026-06-08, 7d
-    S7 - Intégration et validation des scénarios     :s7, 2026-06-15, 7d
-    Finalisation et soutenance                       :final, 2026-06-22, 3d
+    S0 - Lancement                  :s0, 2026-04-24, 3d
+    S1 - Recherche                  :s1, 2026-04-27, 7d
+    S2 - Scénarios                  :s2, 2026-05-04, 7d
+    S3 - Clarification              :s3, 2026-05-11, 7d
+    S4 - Validation                 :s4, 2026-05-18, 7d
+    S5 - CDC et maths               :s5, 2026-05-25, 14d
+    S6 - Développement              :s6, 2026-06-08, 7d
+    S7 - Validation finale          :s7, 2026-06-15, 7d
+    Soutenance                      :final, 2026-06-22, 3d
 
     section Niko
-    Structurer les notes et le dépôt GitHub          :n0, 2026-04-24, 3d
-    Rechercher des modèles humains et cinématiques   :n1, 2026-04-27, 7d
-    Étudier l'import ou la reconstruction RoboDK     :n2, 2026-05-04, 7d
-    Présenter les contraintes RoboDK                 :n3, 2026-05-11, 7d
-    Valider l'approche cinématique et les DDL        :n4, 2026-05-18, 7d
-    Formaliser la cinématique et préparer les tests  :n5, 2026-05-25, 14d
-    Adapter le mannequin URDF et tester RoboDK       :n6, 2026-06-08, 7d
-    Stabiliser les animations et la démonstration    :n7, 2026-06-15, 7d
-    Vérifier la démonstration technique              :n8, 2026-06-22, 3d
+    Notes et dépôt GitHub           :n0, 2026-04-24, 3d
+    Modèles humains                 :n1, 2026-04-27, 7d
+    Import RoboDK                   :n2, 2026-05-04, 7d
+    Contraintes RoboDK              :n3, 2026-05-11, 7d
+    Cinématique et DDL              :n4, 2026-05-18, 7d
+    Formulation cinématique         :n5, 2026-05-25, 14d
+    Tests URDF/RoboDK               :n6, 2026-06-08, 7d
+    Démonstration                   :n7, 2026-06-15, 7d
+    Vérification technique          :n8, 2026-06-22, 3d
 
     section Luc
-    Identifier les contraintes de sécurité H-R       :l0, 2026-04-24, 3d
-    Rechercher les références H-R et les normes      :l1, 2026-04-27, 7d
-    Formaliser les premiers risques de sécurité      :l2, 2026-05-04, 7d
-    Présenter les modes d'interaction et normes      :l3, 2026-05-11, 7d
-    Valider les distances et règles de sécurité      :l4, 2026-05-18, 7d
-    Relier normes, scénarios et critères             :l5, 2026-05-25, 14d
-    Documenter les tests et les limites              :l6, 2026-06-08, 7d
-    Mettre à jour le rapport avec les résultats      :l7, 2026-06-15, 7d
-    Vérifier cohérence sécurité/normes               :l8, 2026-06-22, 3d
+    Sécurité initiale               :l0, 2026-04-24, 3d
+    Normes H-R                      :l1, 2026-04-27, 7d
+    Risques scénarios               :l2, 2026-05-04, 7d
+    Modes d'interaction             :l3, 2026-05-11, 7d
+    Distances sécurité              :l4, 2026-05-18, 7d
+    Normes et critères              :l5, 2026-05-25, 14d
+    Documentation tests             :l6, 2026-06-08, 7d
+    Résultats rapport               :l7, 2026-06-15, 7d
+    Vérification finale             :l8, 2026-06-22, 3d
 
     section Alex
-    Identifier les contraintes mannequin et RoboDK   :a0, 2026-04-24, 3d
-    Organiser les sources et la documentation        :a1, 2026-04-27, 7d
-    Préparer la présentation du 13 mai               :a2, 2026-05-04, 7d
-    Présenter contexte, scénarios et exigences       :a3, 2026-05-11, 7d
-    Intégrer les décisions dans le cahier des charges :a4, 2026-05-18, 7d
-    Finaliser CDC, état de l'art et rapport          :a5, 2026-05-25, 14d
-    Vérifier les comportements de sécurité           :a6, 2026-06-08, 7d
-    Valider ralentissement, arrêt et synchronisation :a7, 2026-06-15, 7d
-    Finaliser support et répétition                  :a8, 2026-06-22, 3d
+    Contraintes mannequin           :a0, 2026-04-24, 3d
+    Documentation projet            :a1, 2026-04-27, 7d
+    Présentation 13 mai             :a2, 2026-05-04, 7d
+    Scénarios et exigences          :a3, 2026-05-11, 7d
+    Cahier des charges              :a4, 2026-05-18, 7d
+    Rapport et état de l'art        :a5, 2026-05-25, 14d
+    Vérification sécurité           :a6, 2026-06-08, 7d
+    Synchronisation                 :a7, 2026-06-15, 7d
+    Support soutenance              :a8, 2026-06-22, 3d
 ```
 
 ## 8. Critères de réussite du projet
