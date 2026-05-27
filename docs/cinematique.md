@@ -88,6 +88,48 @@ Chaque membre (bras gauche/droit, jambe gauche/droite) est une **chaîne série
 indépendante** issue du bassin ; l'arbre se traite comme quatre chaînes série
 partageant la même base.
 
+### Arbre cinématique
+
+```mermaid
+graph TD
+    W["Monde R0"]:::world
+    P["Bassin — base flottante x_b"]:::base
+    TR["Tronc rigide"]:::fixed
+    HT["Cou + tête"]:::fixed
+    W -. "x_b" .-> P
+    P -. "épine figée" .-> TR
+    TR -. "cou/tête figés" .-> HT
+
+    subgraph SBD [Bras droit - 6 DDL]
+        direction LR
+        ED["Épaule D<br/>Rx,Ry,Rz (3)"] -->|"coude Rz (1)"| CD["Coude D"] -->|"poignet Rx,Rz (2)"| MD["Main D"]
+    end
+    subgraph SBG [Bras gauche - 6 DDL]
+        direction LR
+        EG["Épaule G<br/>Rx,Ry,Rz (3)"] -->|"coude Rz (1)"| CG["Coude G"] -->|"poignet Rx,Rz (2)"| MG["Main G"]
+    end
+    subgraph SJD [Jambe droite - 5 DDL]
+        direction LR
+        HD["Hanche D<br/>Rx,Ry,Rz (3)"] -->|"genou Ry (1)"| GD["Genou D"] -->|"cheville Ry (1)"| PD["Pied D"]
+    end
+    subgraph SJG [Jambe gauche - 5 DDL]
+        direction LR
+        HG["Hanche G<br/>Rx,Ry,Rz (3)"] -->|"genou Ry (1)"| GG["Genou G"] -->|"cheville Ry (1)"| PG["Pied G"]
+    end
+
+    TR -. "clavicule D figée" .-> ED
+    TR -. "clavicule G figée" .-> EG
+    P --> HD
+    P --> HG
+
+    classDef fixed fill:#eeeeee,stroke:#999999,color:#555555,stroke-dasharray:4 3;
+    classDef base fill:#cfe2ff,stroke:#3366cc;
+    classDef world fill:#ffffff,stroke:#333333;
+```
+
+Les liaisons en **pointillés gris** sont figées (rigides) ; les flèches pleines
+portent les 22 degrés de liberté actifs.
+
 ### Base flottante
 
 Le bassin n'est pas ancré au monde : sa pose est paramétrée par
@@ -130,6 +172,16 @@ $$
 où chaque $\mathbf{T}_{o}$ désigne le décalage fixe propre à la liaison. Genou et
 cheville sont des pivots autour de $y$ (axe sagittal, flexion) — cohérent avec les
 butées articulaires du modèle (genou $\in[0,135°]$, cheville $\in[-30°,+50°]$).
+
+Chaîne de la jambe (segments reliés par leurs liaisons, axes indiqués) :
+
+```mermaid
+flowchart LR
+    B["Bassin"]:::root -->|"Hanche · Rx,Ry,Rz (3)"| C["Cuisse"]
+    C -->|"Genou · Ry (1)"| M["Mollet"]
+    M -->|"Cheville · Ry (1)"| P["Pied"]
+    classDef root fill:#cfe2ff,stroke:#3366cc;
+```
 
 ### 4.2 Modèle de déplacement
 
@@ -189,6 +241,16 @@ $$
 
 La pose de la main s'extrait de ${}^{0}\mathbf{T}_{\text{main}}$ : position
 $\mathbf{p}_{\text{main}}\in\mathbb{R}^3$ et orientation ${}^{0}\mathbf{R}_{\text{main}}\in SO(3)$.
+
+Chaîne du bras (segments reliés par leurs liaisons, axes indiqués) :
+
+```mermaid
+flowchart LR
+    T["Tronc (fixe)"]:::root -->|"Épaule · Rx,Ry,Rz (3)"| U["Bras"]
+    U -->|"Coude · Rz (1)"| F["Avant-bras"]
+    F -->|"Poignet · Rx,Rz (2)"| H["Main"]
+    classDef root fill:#eeeeee,stroke:#999999;
+```
 
 ### 5.2 Problème de cinématique inverse (posé, non résolu à la main)
 
