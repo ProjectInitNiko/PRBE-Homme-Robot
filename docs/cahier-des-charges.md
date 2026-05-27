@@ -218,7 +218,7 @@ Le projet a débuté par la réunion de lancement du **24 avril** et se termine 
 | S3 : 11-17 mai | Présentation intermédiaire, clarification des scénarios, identification des normes de sécurité et des contraintes d'import du mannequin. | Présenter les contraintes RoboDK et préciser les pistes de modélisation. | Présenter les modes d'interaction et les normes à étudier. | Présenter le contexte, les scénarios et les exigences fonctionnelles. | Scénarios et exigences discutés avec les encadrants. |
 | S4 : 18-24 mai | Validation des scénarios retenus, choix des DDL utiles, distances de sécurité et structuration du cahier des charges. | Valider l'approche cinématique classique et les DDL utiles du mannequin. | Valider les distances de sécurité et les règles de ralentissement/arrêt. | Intégrer les décisions de réunion dans le cahier des charges et le planning. | Scénarios retenus, DDL et règles de sécurité validés. |
 | S5 : 25-31 mai | Finalisation du cahier des charges, formalisation du modèle cinématique et formulation mathématique. | Finaliser le tableau des DDL et formaliser la cinématique du mannequin. | Relier les normes aux scénarios, aux zones de sécurité et aux critères de validation. | Finaliser le cahier des charges et structurer le rapport. | Cahier des charges finalisé et formulation mathématique avancée. |
-| S6 : 1-7 juin | Formulation mathématique, préparation des tests URDF/RoboDK et début du développement technique. | Préparer les tests URDF/RoboDK et vérifier l'exploitation des DDL. | Documenter les premiers tests, les choix techniques et les limites rencontrées. | Vérifier les comportements de sécurité attendus dans les scénarios. | Formulation mathématique et protocole de tests. |
+| S6 : 1-7 juin | Préparation des tests URDF/RoboDK et début du développement technique. | Préparer les tests URDF/RoboDK et vérifier l'exploitation des DDL. | Documenter les premiers tests, les choix techniques et les limites rencontrées. | Préparer les scénarios de test et les attendus de validation. | Protocole de tests et premiers essais techniques. |
 | S7 : 8-14 juin | Développement technique : import/adaptation du mannequin, scripts de pilotage et premiers tests de simulation. | Générer ou adapter le mannequin URDF, tester l'import et le pilotage dans RoboDK. | Mettre à jour le rapport avec les résultats intermédiaires et les analyses. | Valider les comportements de ralentissement, arrêt, attente et synchronisation temporelle. | Mannequin exploitable et premiers scripts de simulation. |
 | S8 : 15-21 juin | Intégration et validation des scénarios coexistence/synchronisation, captures, résultats et finalisation du fond du rapport. | Implémenter ou ajuster les animations dans RoboDK et stabiliser la démonstration. | Finaliser l'analyse des résultats et la partie validation du rapport. | Vérifier la cohérence des scénarios et préparer les captures de simulation. | Démonstrateurs validés et rapport en version quasi finale. |
 | Finalisation : 22-24 juin | Relecture finale, vérifications, répétition, correction des derniers détails, finalisation du support et soutenance du 24 juin. | Vérifier la démonstration technique et préparer les explications associées. | Vérifier la cohérence sécurité/normes et préparer les réponses aux questions. | Finaliser le support de soutenance, coordonner la répétition et les dernières corrections. | Rapport final, support final et soutenance du 24 juin. |
@@ -238,7 +238,7 @@ gantt
     S3 - Clarification              :s3, 2026-05-11, 7d
     S4 - Validation                 :s4, 2026-05-18, 7d
     S5 - CDC et maths               :s5, 2026-05-25, 7d
-    S6 - Maths et tests             :s6, 2026-06-01, 7d
+    S6 - Tests techniques           :s6, 2026-06-01, 7d
     S7 - Développement              :s7, 2026-06-08, 7d
     S8 - Validation finale          :s8, 2026-06-15, 7d
     Soutenance                      :final, 2026-06-22, 3d
@@ -274,7 +274,7 @@ gantt
     Scénarios et exigences          :a3, 2026-05-11, 7d
     Cahier des charges              :a4, 2026-05-18, 7d
     Rapport et CDC                  :a5, 2026-05-25, 7d
-    Vérification sécurité           :a6, 2026-06-01, 7d
+    Scénarios de test               :a6, 2026-06-01, 7d
     Synchronisation                 :a7, 2026-06-08, 7d
     Captures simulation             :a8, 2026-06-15, 7d
     Support soutenance              :a9, 2026-06-22, 3d
