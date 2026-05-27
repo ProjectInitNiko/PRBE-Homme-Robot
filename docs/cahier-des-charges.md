@@ -88,43 +88,45 @@ L'objectif est d'assurer que le robot adapte son comportement en fonction de la 
 
 #### Description
 
-Dans ce scenario, le robot et l'operateur participent a un meme processus industriel, mais sans contact direct. Le robot livre des lots de pieces a l'operateur, l'operateur assemble les pieces, puis le robot recupere les pieces assemblees ou retourne vers la zone de stock.
+Dans ce scenario, le robot et l'operateur participent a un meme processus industriel, mais sans contact direct. Le robot depose une piece dans une zone de transfert, puis l'operateur vient recuperer cette piece dans une fenetre de temps donnee.
 
-L'objectif est de reduire les temps d'inactivite de l'operateur en coordonnant le rythme du robot avec le rythme de travail humain.
+L'objectif est de montrer une vraie synchronisation temporelle entre le robot et l'operateur : le robot doit liberer la zone avant l'arrivee de l'humain, et l'humain doit recuperer la piece dans le delai prevu sans entrer en conflit avec le mouvement du robot.
 
 #### Workflow retenu
 
-1. Le robot preleve un lot de pieces au stock.
-2. Le robot transporte le lot vers la zone de travail de l'operateur.
-3. Le robot depose le lot si la zone est disponible.
-4. L'operateur assemble les pieces.
-5. Le robot recupere les pieces assemblees ou repart chercher un nouveau lot.
-6. Les regles de securite du scenario de coexistence restent actives.
+1. Le robot preleve une piece au stock.
+2. Le robot transporte la piece vers la zone de transfert.
+3. Le robot depose la piece dans la zone de transfert pendant un intervalle autorise.
+4. Le robot quitte la zone de transfert ou se place dans une position d'attente non genante.
+5. L'operateur recupere la piece dans la fenetre de temps definie.
+6. Les regles de securite du scenario de coexistence restent actives pendant toute la sequence.
 
 #### Regles de fonctionnement
 
-- Le robot ne doit pas deposer un lot si la zone de travail est saturee.
-- La zone de travail doit contenir au maximum **2 lots simultanement** : un lot en assemblage et un lot en attente.
-- Un detecteur d'etat doit indiquer si la zone de depot est libre ou occupee.
-- Si un humain entre dans la zone critique du robot, les regles de ralentissement et d'arret s'appliquent.
-- Le robot doit attendre dans une position non genante si la zone de depot n'est pas disponible.
+- Une seule piece est prise en compte dans la zone de transfert pour chaque cycle.
+- La recuperation par l'operateur doit se faire dans une fenetre temporelle definie apres le depot de la piece.
+- Le robot et l'operateur ne doivent pas occuper simultanement la zone de transfert.
+- Si l'operateur arrive trop tot ou si le robot tarde a quitter la zone, les regles de ralentissement et d'arret s'appliquent.
+- Le robot doit attendre dans une position non genante lorsque la fenetre de transfert n'est pas disponible.
 
 #### Exigences fonctionnelles
 
 | ID | Exigence | Priorite |
 |---|---|---|
-| SYNC-F1 | Representer une zone de stock, une zone de depot et une zone de travail operateur | Haute |
-| SYNC-F3 | Limiter le nombre de lots simultanes dans la zone operateur | Haute |
-| SYNC-F4 | Faire attendre le robot si la zone de depot est saturee | Haute |
-| SYNC-F5 | Appliquer les regles de securite de coexistence pendant la livraison | Haute |
-| SYNC-F6 | Montrer une coordination temporelle entre travail humain et trajet robot | Moyenne |
+| SYNC-F1 | Representer une zone de stock, une zone de transfert et une zone operateur | Haute |
+| SYNC-F2 | Modeliser l'etat de la zone de transfert : libre, occupee par le robot, piece disponible, occupee par l'operateur | Haute |
+| SYNC-F3 | Definir une fenetre temporelle de recuperation de la piece par l'operateur | Haute |
+| SYNC-F4 | Empecher l'occupation simultanee de la zone de transfert par le robot et l'operateur | Haute |
+| SYNC-F5 | Appliquer les regles de securite de coexistence pendant le depot et la recuperation | Haute |
+| SYNC-F6 | Montrer une coordination temporelle entre depot robot et recuperation humaine | Moyenne |
 
 #### Criteres de validation
 
-- La simulation montre un cycle complet stock -> operateur -> retour.
-- Le robot ne depose pas de lot lorsque la zone est saturee.
+- La simulation montre un cycle complet stock -> zone de transfert -> recuperation operateur.
+- L'operateur recupere la piece dans la fenetre temporelle prevue.
+- Le robot et l'operateur ne se trouvent pas simultanement dans la zone de transfert.
 - La securite reste prioritaire sur la synchronisation.
-- Le scenario illustre une activite simultanee et coordonnee, et pas seulement une sequence independante de taches.
+- Le scenario illustre une activite temporellement coordonnee, et pas seulement une sequence independante de taches.
 
 ## 4. Modele humain
 
