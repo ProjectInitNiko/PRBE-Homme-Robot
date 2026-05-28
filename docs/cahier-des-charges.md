@@ -1,17 +1,20 @@
 # Cahier des charges - PRBE Homme-Robot
 
 **Projet :** Simulation du mouvement humain et interaction homme-robot dans RoboDK
+
 **Contexte :** PRBE 2026 - ISAE-Supméca - Ligne ALIX
+
 **Équipe :** Niko Khachidze, Luc Fantasia, Alexandre Nowak
+
 **Encadrants :** Francesco Ciampi, Thierno Diallo
+
 **Période :** avril 2026 - juin 2026
-**Version :** v0.1 - document de travail
 
 ## 1. Contexte et objectif du projet
 
 Le projet porte sur la simulation d'interactions entre un opérateur humain et un robot mobile/manipulateur dans l'environnement RoboDK, en s'appuyant sur la ligne ALIX de l'ISAE-Supméca.
 
-L'objectif principal est de représenter un humain mobile ou articulable dans RoboDK, puis de simuler des scénarios d'interaction homme-robot permettant d'évaluer les conditions de sécurité et d'organisation du travail.
+L'objectif principal est de représenter un humain dans RoboDK, puis de simuler des scénarios d'interaction homme-robot permettant d'évaluer les conditions de sécurité et d'organisation du travail.
 
 Le verrou technique principal est l'intégration d'un modèle humain exploitable dans un environnement de simulation robotique. RoboDK permet de simuler des robots industriels, mais ne propose pas directement de modèle humain cinématique adapté au pilotage articulaire. Le projet vise donc à construire un pont entre un mannequin humain au format URDF et une simulation RoboDK.
 
@@ -19,7 +22,7 @@ Le verrou technique principal est l'intégration d'un modèle humain exploitable
 
 ### 2.1. Périmètre fonctionnel
 
-Le projet se concentre sur deux scénarios validés en réunion :
+Le projet se concentre sur deux scénarios :
 
 - **Scénario 1 - Coexistence :** l'humain et le robot partagent un même environnement, mais ne travaillent pas sur une même tâche.
 - **Scénario 2 - Synchronisation :** le robot et l'humain interviennent dans un même processus de production, avec une coordination temporelle indirecte.
@@ -46,7 +49,6 @@ Les éléments suivants ne sont pas visés dans la version principale du projet 
 - Simulation biomécanique complète du corps humain.
 - Capture de mouvement en temps réel par caméra.
 - Contrôle dynamique complet de l'équilibre humain.
-- Validation normative industrielle complète préalable à une mise en production.
 
 Ces points pourront être présentés comme limites ou perspectives.
 
@@ -133,7 +135,9 @@ L'objectif est de montrer une vraie synchronisation temporelle entre le robot et
 
 Le modèle humain doit permettre de représenter un opérateur dans RoboDK avec un niveau de détail suffisant pour visualiser les interactions et les distances de sécurité.
 
-Le projet ne vise pas une simulation biomécanique exhaustive. Le modèle doit rester simple, pilotable et exploitable dans le temps disponible.
+Le projet ne vise pas une simulation biomécanique exhaustive. Le modèle doit rester simple, pilotable et exploitable.
+
+Des simulations sur différentes morphologies et corpulences pourront être réalisées afin de mieux valider le modèle, notamment vis-à-vis des distances de sécurité et de la robustesse des scénarios.
 
 ### 4.2. Choix de modélisation
 
@@ -142,8 +146,7 @@ Le mannequin est généré à partir de HMG sous forme d'un fichier URDF.
 Pour la démonstration technique, les choix actuels sont :
 
 - Utiliser un mannequin anthropométrique scalable.
-- Figer l'épine pour réduire le nombre de degrés de liberté.
-- Valider d'abord l'import RoboDK avant d'étendre le modèle.
+- Figer le buste pour réduire le nombre de degrés de liberté.
 
 ### 4.3. Degrés de liberté utiles
 
@@ -160,7 +163,7 @@ Les degrés de liberté retenus correspondent uniquement à des rotations articu
 | Buste -> Cuisse (x2) | 3 par jambe | Mouvements fluides et courbes |
 | Cuisse -> Mollet (x2) | 1 par jambe | Flexion genou, type pivot |
 | Cheville -> Pied (x2) | 1 par jambe | Pivot cheville |
-| **Total jambes** | **10** | |
+| **Total jambes** | **10** | 5 DDL par jambe, donc 10 DDL pour les deux jambes |
 | Épaule (x2) | 3 par bras | Rotation de l'épaule |
 | Coude (x2) | 1 par bras | Flexion du coude |
 | Poignet (x2) | 2 par bras | Orientation du poignet |
@@ -187,8 +190,6 @@ Les distances retenues pour la simulation sont :
 | Zone de ralentissement | <= 1 m | Vitesse réduite |
 | Zone d'arrêt | <= 0,5 m | Arrêt complet |
 
-Ces distances sont les valeurs validées pour le scénario de projet. Elles devront être justifiées dans le rapport par rapport aux normes et aux contraintes réelles de la plateforme ALIX.
-
 ## 6. Livrables attendus
 
 ### 6.1. Livrables intermédiaires
@@ -208,16 +209,16 @@ Ces distances sont les valeurs validées pour le scénario de projet. Elles devr
 
 ## 7. Planning prévisionnel
 
-Le projet a débuté par la réunion de lancement du **24 avril** et se termine par la soutenance prévue le **24 juin**. Le planning ci-dessous est construit pour être repris ensuite sous forme de diagramme de Gantt : chaque période précise les tâches à réaliser, les livrables attendus et la répartition entre les membres du groupe.
+Le projet a débuté par la réunion de lancement du **20 avril** et se termine par la soutenance prévue le **24 juin**. Le planning ci-dessous représente : chaque période précise les tâches à réaliser, les livrables attendus et la répartition entre les membres du groupe.
 
 | Période | Objectif de la période | Niko | Luc | Alex | Livrable / jalon |
 |---|---|---|---|---|---|
-| S0 : 24-26 avril | Lancement du projet, compréhension du sujet et identification du besoin : modéliser un mannequin humain cinématique dans RoboDK. | Structurer les notes de lancement et organiser le dépôt GitHub. | Identifier les premières contraintes de sécurité homme-robot. | Identifier les contraintes techniques liées au mannequin et à RoboDK. | Objectifs généraux du projet définis. |
+| S0 : 20-26 avril | Lancement du projet, compréhension du sujet et identification du besoin : modéliser un mannequin humain cinématique dans RoboDK. | Structurer les notes de lancement et organiser le dépôt GitHub. | Identifier les premières contraintes de sécurité homme-robot. | Identifier les contraintes techniques liées au mannequin et à RoboDK. | Objectifs généraux du projet définis. |
 | S1 : 27 avril-3 mai | Recherche préliminaire sur les modèles humains, les approches cinématiques possibles et l'utilisation de Python/RoboDK. | Rechercher des solutions de mannequin humain et de modélisation cinématique. | Rechercher les premières références sur les interactions homme-robot et les normes. | Regrouper les sources et organiser la documentation projet. | Base documentaire initiale. |
 | S2 : 4-10 mai | Définition des premiers scénarios homme-robot, premières exigences fonctionnelles et préparation de la présentation du 13 mai. | Étudier les possibilités d'import ou de reconstruction du mannequin dans RoboDK. | Formaliser les premiers scénarios et les premiers risques de sécurité. | Préparer la présentation du 13 mai et structurer les exigences initiales. | Présentation intermédiaire préparée. |
 | S3 : 11-17 mai | Présentation intermédiaire, clarification des scénarios, identification des normes de sécurité et des contraintes d'import du mannequin. | Présenter les contraintes RoboDK et préciser les pistes de modélisation. | Présenter les modes d'interaction et les normes à étudier. | Présenter le contexte, les scénarios et les exigences fonctionnelles. | Scénarios et exigences discutés avec les encadrants. |
 | S4 : 18-24 mai | Validation des scénarios retenus, choix des DDL utiles, distances de sécurité et structuration du cahier des charges. | Valider l'approche cinématique classique et les DDL utiles du mannequin. | Valider les distances de sécurité et les règles de ralentissement/arrêt. | Intégrer les décisions de réunion dans le cahier des charges et le planning. | Scénarios retenus, DDL et règles de sécurité validés. |
-| S5 : 25-31 mai | Finalisation du cahier des charges, formalisation du modèle cinématique et formulation mathématique. | Finaliser le tableau des DDL et formaliser la cinématique du mannequin. | Relier les normes aux scénarios, aux zones de sécurité et aux critères de validation. | Finaliser le cahier des charges et structurer le rapport. | Cahier des charges finalisé et formulation mathématique avancée. |
+| S5 : 25-31 mai | Finalisation du cahier des charges, formalisation du modèle cinématique et formulation mathématique. | Finaliser le tableau des DDL et formaliser la cinématique du mannequin. | Relier les normes aux scénarios, aux zones de sécurité et aux critères de validation. | Finaliser le cahier des charges et structurer le rapport. | Cahier des charges finalisé et formulation mathématique. |
 | S6 : 1-7 juin | Préparation des tests URDF/RoboDK et début du développement technique. | Préparer les tests URDF/RoboDK et vérifier l'exploitation des DDL. | Documenter les premiers tests, les choix techniques et les limites rencontrées. | Préparer les scénarios de test et les attendus de validation. | Protocole de tests et premiers essais techniques. |
 | S7 : 8-14 juin | Développement technique : import/adaptation du mannequin, scripts de pilotage et premiers tests de simulation. | Générer ou adapter le mannequin URDF, tester l'import et le pilotage dans RoboDK. | Mettre à jour le rapport avec les résultats intermédiaires et les analyses. | Valider les comportements de ralentissement, arrêt, attente et synchronisation temporelle. | Mannequin exploitable et premiers scripts de simulation. |
 | S8 : 15-21 juin | Intégration et validation des scénarios coexistence/synchronisation, captures, résultats et finalisation du fond du rapport. | Implémenter ou ajuster les animations dans RoboDK et stabiliser la démonstration. | Finaliser l'analyse des résultats et la partie validation du rapport. | Vérifier la cohérence des scénarios et préparer les captures de simulation. | Démonstrateurs validés et rapport en version quasi finale. |
@@ -232,7 +233,7 @@ gantt
     axisFormat  %d/%m
 
     section Planning global
-    S0 - Lancement                  :s0, 2026-04-24, 3d
+    S0 - Lancement                  :s0, 2026-04-20, 7d
     S1 - Recherche                  :s1, 2026-04-27, 7d
     S2 - Scénarios                  :s2, 2026-05-04, 7d
     S3 - Clarification              :s3, 2026-05-11, 7d
@@ -244,7 +245,7 @@ gantt
     Soutenance                      :final, 2026-06-22, 3d
 
     section Niko
-    Notes et dépôt GitHub           :n0, 2026-04-24, 3d
+    Notes et dépôt GitHub           :n0, 2026-04-20, 7d
     Modèles humains                 :n1, 2026-04-27, 7d
     Import RoboDK                   :n2, 2026-05-04, 7d
     Contraintes RoboDK              :n3, 2026-05-11, 7d
@@ -256,7 +257,7 @@ gantt
     Vérification technique          :n9, 2026-06-22, 3d
 
     section Luc
-    Sécurité initiale               :l0, 2026-04-24, 3d
+    Sécurité initiale               :l0, 2026-04-20, 7d
     Normes H-R                      :l1, 2026-04-27, 7d
     Risques scénarios               :l2, 2026-05-04, 7d
     Modes d'interaction             :l3, 2026-05-11, 7d
@@ -268,7 +269,7 @@ gantt
     Vérification finale             :l9, 2026-06-22, 3d
 
     section Alex
-    Contraintes mannequin           :a0, 2026-04-24, 3d
+    Contraintes mannequin           :a0, 2026-04-20, 7d
     Documentation projet            :a1, 2026-04-27, 7d
     Présentation 13 mai             :a2, 2026-05-04, 7d
     Scénarios et exigences          :a3, 2026-05-11, 7d
