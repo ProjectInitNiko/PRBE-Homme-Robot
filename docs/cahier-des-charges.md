@@ -43,14 +43,33 @@ Le mannequin humain sera d'abord simplifié pour garantir une intégration réal
 
 ### 2.3. Hors périmètre
 
-Les éléments suivants ne sont pas visés dans la version principale du projet :
+Les éléments suivants ne sont pas visés dans la version principale du projet. Ces limites
+sont fixées afin de concentrer le travail sur les besoins nécessaires aux scénarios
+retenus et de garder un objectif réalisable dans le temps disponible :
 
-- Contact physique direct entre l'humain et le robot.
-- Simulation biomécanique complète du corps humain.
-- Capture de mouvement en temps réel par caméra.
-- Contrôle dynamique complet de l'équilibre humain.
+- **Contact physique direct entre l'humain et le robot :** ce point n'est pas traité dans
+  la version principale, car les scénarios retenus reposent sur la coexistence et la
+  synchronisation temporelle, sans interaction physique volontaire entre l'opérateur et
+  le robot. Il pourra être abordé comme perspective si le projet devait évoluer vers des
+  modes de coopération ou de collaboration plus avancés.
+- **Simulation biomécanique complète du corps humain :** elle n'est pas nécessaire pour
+  répondre au besoin du projet. L'objectif est de disposer d'un mannequin exploitable
+  dans RoboDK, avec les degrés de liberté utiles à la démonstration, et non de reproduire
+  fidèlement l'ensemble des phénomènes musculaires, articulaires ou physiologiques.
+- **Capture de mouvement en temps réel par caméra :** cette fonctionnalité dépasse le
+  périmètre actuel et demanderait du temps supplémentaire pour l'acquisition, le
+  traitement et la synchronisation des données. Elle constitue donc une perspective
+  intéressante pour rendre le mannequin plus interactif dans une version future.
+- **Contrôle dynamique complet de l'équilibre humain :** ce contrôle n'est pas nécessaire
+  pour les scénarios retenus, puisque le mannequin est utilisé comme représentation
+  cinématique simplifiée de l'opérateur. Le projet ne cherche pas à simuler la stabilité
+  dynamique complète d'un corps humain en mouvement.
 
-Ces points pourront être présentés comme limites ou perspectives.
+Ces choix permettent de garder le projet centré sur la modélisation, l'import et le
+pilotage d'un mannequin humain simplifié dans RoboDK. Les points liés au contact direct
+et à la capture de mouvement pourront être présentés comme perspectives à traiter avec
+plus de temps, tandis que la biomécanique complète et l'équilibre dynamique ne sont pas
+nécessaires pour atteindre les objectifs de la démonstration.
 
 ## 3. Scénarios retenus
 
