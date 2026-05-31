@@ -85,9 +85,14 @@ L'objectif est d'assurer que le robot adapte son comportement en fonction de la 
 
 - Si un humain est détecté à moins de **1 m**, le robot ralentit.
 - Si un humain est détecté à moins de **0,5 m**, le robot s'arrête complètement.
-- Si un humain bloque un passage de porte pendant **30 secondes**, le robot recule pour lui laisser le passage.
+- Si un humain bloque un passage de porte pendant **10 secondes**, le robot recule pour lui laisser le passage.
 - Si l'humain se déplace et libère la zone, le robot reprend son trajet.
 - En espace ouvert, le robot s'arrête et attend que l'humain sorte de la zone critique.
+
+Le seuil de **10 secondes** remplace le seuil initial de 30 secondes, jugé trop long
+lors de la réunion du 28 mai. L'objectif est de réduire le temps d'attente avant la
+réaction du robot, afin d'éviter une situation bloquée et de rendre le comportement plus
+réaliste dans un environnement de travail partagé.
 
 #### 3.1.3. Exigences fonctionnelles
 
@@ -96,8 +101,17 @@ L'objectif est d'assurer que le robot adapte son comportement en fonction de la 
 | COEX-F1 | Détecter la présence d'un humain dans la zone de déplacement du robot | Haute |
 | COEX-F2 | Ralentir le robot lorsque la distance humain-robot devient inférieure à 1 m | Haute |
 | COEX-F3 | Arrêter le robot lorsque la distance humain-robot devient inférieure à 0,5 m | Haute |
-| COEX-F4 | Gérer le cas d'un humain immobile devant une porte pendant 30 s | Moyenne |
+| COEX-F4 | Gérer le cas d'un humain immobile devant une porte pendant 10 s | Moyenne |
 | COEX-F5 | Reprendre automatiquement le trajet lorsque la zone redevient libre | Moyenne |
+
+Les exigences COEX-F1 à COEX-F3 sont classées en priorité haute car elles portent
+directement sur la prévention du risque de contact entre l'humain et le robot. Dans ce
+scénario, la sécurité est prioritaire sur la continuité du déplacement du robot : le
+niveau de risque associé à une distance trop faible justifie de privilégier la détection,
+le ralentissement et l'arrêt avant toute optimisation de temps de cycle. COEX-F4 et
+COEX-F5 restent en priorité moyenne, car elles améliorent la fluidité et évitent les
+situations d'attente prolongée, sans être aussi critiques que les exigences liées à la
+mise en sécurité immédiate.
 
 #### 3.1.4. Critères de validation
 
