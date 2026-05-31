@@ -89,11 +89,6 @@ L'objectif est d'assurer que le robot adapte son comportement en fonction de la 
 - Si l'humain se déplace et libère la zone, le robot reprend son trajet.
 - En espace ouvert, le robot s'arrête et attend que l'humain sorte de la zone critique.
 
-Le seuil de **10 secondes** remplace le seuil initial de 30 secondes, jugé trop long
-lors de la réunion du 28 mai. L'objectif est de réduire le temps d'attente avant la
-réaction du robot, afin d'éviter une situation bloquée et de rendre le comportement plus
-réaliste dans un environnement de travail partagé.
-
 #### 3.1.3. Exigences fonctionnelles
 
 | ID | Exigence | Priorité |
@@ -104,14 +99,10 @@ réaliste dans un environnement de travail partagé.
 | COEX-F4 | Gérer le cas d'un humain immobile devant une porte pendant 10 s | Moyenne |
 | COEX-F5 | Reprendre automatiquement le trajet lorsque la zone redevient libre | Moyenne |
 
-Les exigences COEX-F1 à COEX-F3 sont classées en priorité haute car elles portent
-directement sur la prévention du risque de contact entre l'humain et le robot. Dans ce
-scénario, la sécurité est prioritaire sur la continuité du déplacement du robot : le
-niveau de risque associé à une distance trop faible justifie de privilégier la détection,
-le ralentissement et l'arrêt avant toute optimisation de temps de cycle. COEX-F4 et
-COEX-F5 restent en priorité moyenne, car elles améliorent la fluidité et évitent les
-situations d'attente prolongée, sans être aussi critiques que les exigences liées à la
-mise en sécurité immédiate.
+Les exigences COEX-F1 à COEX-F3 sont prioritaires car elles concernent directement la
+sécurité : détecter, ralentir et arrêter le robot permet d'éviter tout risque de contact
+avec l'humain. COEX-F4 et COEX-F5 restent en priorité moyenne, car elles améliorent la
+fluidité du scénario sans relever de la mise en sécurité immédiate.
 
 #### 3.1.4. Critères de validation
 
