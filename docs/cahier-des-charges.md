@@ -154,6 +154,15 @@ L'objectif est de montrer une vraie synchronisation entre le robot et l'opérate
 | SYNC-F7 | Afficher ou simuler les déclencheurs par des messages sonores, signaux lumineux ou logs aux étapes clés | Moyenne |
 | SYNC-F8 | Conserver un délai maximal d'attente comme critère de performance, sans en faire le seul mécanisme de synchronisation | Moyenne |
 
+Les exigences SYNC-F1 à SYNC-F6 sont prioritaires car elles définissent le fonctionnement
+minimal du scénario de synchronisation : représenter les zones, suivre l'état de la zone de
+transfert, déclencher la passation dans les deux sens, empêcher l'occupation simultanée et
+maintenir les règles de sécurité. Sans ces éléments, le scénario ne permettrait pas de
+montrer un échange de pièces réellement synchronisé entre le robot et l'opérateur.
+SYNC-F7 et SYNC-F8 restent en priorité moyenne, car elles renforcent la lisibilité et
+l'évaluation de la démonstration, mais ne conditionnent pas directement la sécurité ni la
+validité minimale du mécanisme de passation.
+
 #### 3.2.5. Critères de validation
 
 - La simulation montre un cycle complet stock -> zone de transfert -> récupération opérateur -> assemblage -> reprise robot.
