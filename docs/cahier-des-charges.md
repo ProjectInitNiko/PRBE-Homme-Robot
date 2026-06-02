@@ -25,7 +25,7 @@ Le verrou technique principal est l'intégration d'un modèle humain exploitable
 Le projet se concentre sur deux scénarios :
 
 - **Scénario 1 - Coexistence :** l'humain et le robot partagent un même environnement, mais ne travaillent pas sur une même tâche.
-- **Scénario 2 - Synchronisation :** le robot et l'humain interviennent dans un même processus de production, avec une coordination temporelle indirecte.
+- **Scénario 2 - Synchronisation / échange de pièces :** le robot et l'humain interviennent dans un même processus de production, avec une coordination indirecte basée sur des déclencheurs.
 
 Les modes de coopération et de collaboration directe ne font pas partie du périmètre principal de la démonstration finale. Ils peuvent être mentionnés comme perspectives.
 
@@ -49,7 +49,7 @@ retenus et de garder un objectif réalisable dans le temps disponible :
 
 - **Contact physique direct entre l'humain et le robot :** ce point n'est pas traité dans
   la version principale, car les scénarios retenus reposent sur la coexistence et la
-  synchronisation temporelle, sans interaction physique volontaire entre l'opérateur et
+  synchronisation par déclencheurs, sans interaction physique volontaire entre l'opérateur et
   le robot. Il pourra être abordé comme perspective si le projet devait évoluer vers des
   modes de coopération ou de collaboration plus avancés.
 - **Simulation biomécanique complète du corps humain :** elle n'est pas nécessaire pour
@@ -110,46 +110,56 @@ fluidité du scénario sans relever de la mise en sécurité immédiate.
 - Le comportement du robot change lorsque l'humain entre dans les zones critiques.
 - Le cas de blocage d'une porte ne doit pas conduire à l'arrêt de l'humain et du robot sans fin.
 
-### 3.2. Scénario 2 - Synchronisation
+### 3.2. Scénario 2 - Synchronisation / échange de pièces
 
 #### 3.2.1. Description
 
-Dans ce scénario, le robot et l'opérateur participent à un même processus industriel, mais sans contact direct. Le robot dépose une pièce dans une zone de transfert, puis l'opérateur vient récupérer cette pièce dans une fenêtre de temps donnée.
+Dans ce scénario, le robot et l'opérateur participent à un même processus industriel, mais sans contact direct. Le robot livre une pièce depuis le stock vers une zone de transfert, l'opérateur la récupère puis l'assemble, et le robot vient ensuite reprendre la pièce assemblée.
 
-L'objectif est de montrer une vraie synchronisation temporelle entre le robot et l'opérateur : le robot doit libérer la zone avant l'arrivée de l'humain, et l'humain doit récupérer la pièce dans le délai prévu sans entrer en conflit avec le mouvement du robot.
+L'objectif est de montrer une vraie synchronisation entre le robot et l'opérateur. Cette synchronisation ne doit pas reposer uniquement sur une temporisation fixe : elle doit être pilotée par des déclencheurs, par exemple un message sonore, un signal lumineux ou un log de simulation. Le robot signale que la pièce déposée est prête à être récupérée ; l'opérateur signale ensuite que la pièce assemblée est prête à être reprise par le robot.
 
 #### 3.2.2. Workflow retenu
 
 1. Le robot prélève une pièce au stock.
 2. Le robot transporte la pièce vers la zone de transfert.
-3. Le robot dépose la pièce dans la zone de transfert pendant un intervalle autorisé.
-4. Le robot quitte la zone de transfert ou se place dans une position d'attente non gênante.
-5. L'opérateur récupère la pièce dans la fenêtre de temps définie.
-6. Les règles de sécurité du scénario de coexistence restent actives pendant toute la séquence.
+3. Le robot dépose la pièce dans la zone de transfert.
+4. Le robot émet un déclencheur robot -> opérateur indiquant que la pièce est disponible.
+5. Le robot quitte la zone de transfert ou se place dans une position d'attente non gênante.
+6. L'opérateur récupère la pièce, réalise l'assemblage, puis dépose la pièce assemblée dans la zone de transfert.
+7. L'opérateur émet un déclencheur opérateur -> robot indiquant que la pièce assemblée est prête à être reprise.
+8. Le robot reprend la pièce assemblée lorsque la zone est libre.
+9. Les règles de sécurité du scénario de coexistence restent actives pendant toute la séquence.
 
 #### 3.2.3. Règles de fonctionnement
 
 - Une seule pièce est prise en compte dans la zone de transfert pour chaque cycle.
-- La récupération par l'opérateur doit se faire dans une fenêtre temporelle définie après le dépôt de la pièce.
+- La synchronisation repose sur un enchaînement d'états et de déclencheurs, et non sur un simple intervalle de temps fixe.
+- Une contrainte temporelle peut être conservée comme délai maximal d'attente ou critère de performance, mais elle ne constitue pas à elle seule le mécanisme de synchronisation.
+- Le robot doit pouvoir émettre un signal sonore, lumineux ou un log de simulation lorsqu'il dépose une pièce prête à être récupérée.
+- L'opérateur doit pouvoir déclencher un signal équivalent lorsqu'il dépose une pièce assemblée prête à être reprise par le robot.
 - Le robot et l'opérateur ne doivent pas occuper simultanément la zone de transfert.
 - Si l'opérateur arrive trop tôt ou si le robot tarde à quitter la zone, les règles de ralentissement et d'arrêt s'appliquent.
-- Le robot doit attendre dans une position non gênante lorsque la fenêtre de transfert n'est pas disponible.
+- Le robot doit attendre dans une position non gênante tant que le déclencheur attendu n'a pas été reçu ou que la zone de transfert n'est pas disponible.
 
 #### 3.2.4. Exigences fonctionnelles
 
 | ID | Exigence | Priorité |
 |---|---|---|
 | SYNC-F1 | Représenter une zone de stock, une zone de transfert et une zone opérateur | Haute |
-| SYNC-F2 | Modéliser l'état de la zone de transfert : libre, occupée par le robot, pièce disponible, occupée par l'opérateur | Haute |
-| SYNC-F3 | Définir une fenêtre temporelle de récupération de la pièce par l'opérateur | Haute |
+| SYNC-F2 | Modéliser l'état de la zone de transfert : libre, occupée par le robot, pièce disponible, occupée par l'opérateur, pièce assemblée disponible | Haute |
+| SYNC-F3 | Définir des déclencheurs de passation entre robot et opérateur : signal robot -> opérateur après dépôt, signal opérateur -> robot après dépôt de la pièce assemblée | Haute |
 | SYNC-F4 | Empêcher l'occupation simultanée de la zone de transfert par le robot et l'opérateur | Haute |
 | SYNC-F5 | Appliquer les règles de sécurité de coexistence pendant le dépôt et la récupération | Haute |
-| SYNC-F6 | Montrer une coordination temporelle entre dépôt robot et récupération humaine | Moyenne |
+| SYNC-F6 | Montrer une coordination par enchaînement d'états entre dépôt robot, récupération humaine, assemblage et reprise robot | Haute |
+| SYNC-F7 | Afficher ou simuler les déclencheurs par des messages sonores, signaux lumineux ou logs aux étapes clés | Moyenne |
+| SYNC-F8 | Conserver un délai maximal d'attente comme critère de performance, sans en faire le seul mécanisme de synchronisation | Moyenne |
 
 #### 3.2.5. Critères de validation
 
-- La simulation montre un cycle complet stock -> zone de transfert -> récupération opérateur.
-- L'opérateur récupère la pièce dans la fenêtre temporelle prévue.
+- La simulation montre un cycle complet stock -> zone de transfert -> récupération opérateur -> assemblage -> reprise robot.
+- Le passage d'une étape à l'autre est déclenché par des événements identifiables, et non par une simple attente fixe.
+- Un signal sonore, lumineux ou un log indique quand la pièce déposée par le robot est prête à être récupérée.
+- Un signal sonore, lumineux ou un log indique quand la pièce assemblée déposée par l'opérateur est prête à être reprise par le robot.
 - Le robot et l'opérateur ne se trouvent pas simultanément dans la zone de transfert.
 - La sécurité reste prioritaire sur la synchronisation.
 
@@ -244,7 +254,7 @@ Le projet a débuté par la réunion de lancement du **20 avril** et se termine 
 | S4 : 18-24 mai | Validation des scénarios retenus, choix des DDL utiles, distances de sécurité et structuration du cahier des charges. | Valider l'approche cinématique classique et les DDL utiles du mannequin. | Valider les distances de sécurité et les règles de ralentissement/arrêt. | Intégrer les décisions de réunion dans le cahier des charges et le planning. | Scénarios retenus, DDL et règles de sécurité validés. |
 | S5 : 25-31 mai | Finalisation du cahier des charges, formalisation du modèle cinématique et formulation mathématique. | Finaliser le tableau des DDL et formaliser la cinématique du mannequin. | Relier les normes aux scénarios, aux zones de sécurité et aux critères de validation. | Finaliser le cahier des charges et structurer le rapport. | Cahier des charges finalisé et formulation mathématique. |
 | S6 : 1-7 juin | Préparation des tests URDF/RoboDK et début du développement technique. | Préparer les tests URDF/RoboDK et vérifier l'exploitation des DDL. | Documenter les premiers tests, les choix techniques et les limites rencontrées. | Préparer les scénarios de test et les attendus de validation. | Protocole de tests et premiers essais techniques. |
-| S7 : 8-14 juin | Développement technique : import/adaptation du mannequin, scripts de pilotage et premiers tests de simulation. | Générer ou adapter le mannequin URDF, tester l'import et le pilotage dans RoboDK. | Mettre à jour le rapport avec les résultats intermédiaires et les analyses. | Valider les comportements de ralentissement, arrêt, attente et synchronisation temporelle. | Mannequin exploitable et premiers scripts de simulation. |
+| S7 : 8-14 juin | Développement technique : import/adaptation du mannequin, scripts de pilotage et premiers tests de simulation. | Générer ou adapter le mannequin URDF, tester l'import et le pilotage dans RoboDK. | Mettre à jour le rapport avec les résultats intermédiaires et les analyses. | Valider les comportements de ralentissement, arrêt, attente et synchronisation par déclencheurs. | Mannequin exploitable et premiers scripts de simulation. |
 | S8 : 15-21 juin | Intégration et validation des scénarios coexistence/synchronisation, captures, résultats et finalisation du fond du rapport. | Implémenter ou ajuster les animations dans RoboDK et stabiliser la démonstration. | Finaliser l'analyse des résultats et la partie validation du rapport. | Vérifier la cohérence des scénarios et préparer les captures de simulation. | Démonstrateurs validés et rapport en version quasi finale. |
 | Finalisation : 22-24 juin | Relecture finale, vérifications, répétition, correction des derniers détails, finalisation du support et soutenance du 24 juin. | Vérifier la démonstration technique et préparer les explications associées. | Vérifier la cohérence sécurité/normes et préparer les réponses aux questions. | Finaliser le support de soutenance, coordonner la répétition et les dernières corrections. | Rapport final, support final et soutenance du 24 juin. |
 
@@ -312,5 +322,5 @@ Le projet sera considéré réussi si :
 - Un mannequin humain est intégré ou représenté de manière exploitable dans RoboDK.
 - Les deux scénarios retenus sont clairement formalisés.
 - La simulation montre des comportements de sécurité cohérents : ralentissement, arrêt, attente.
-- Le scénario de synchronisation illustre une coordination temporelle entre robot et opérateur.
+- Le scénario de synchronisation illustre un échange de pièces coordonné par déclencheurs entre robot et opérateur.
 - Les choix techniques sont justifiés par les exigences, les contraintes RoboDK et les normes de sécurité.
