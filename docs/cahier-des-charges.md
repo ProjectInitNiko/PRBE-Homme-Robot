@@ -25,7 +25,7 @@ Le verrou technique principal est l'intégration d'un modèle humain exploitable
 Le projet se concentre sur deux scénarios :
 
 - **Scénario 1 - Coexistence :** l'humain et le robot partagent un même environnement, mais ne travaillent pas sur une même tâche.
-- **Scénario 2 - Synchronisation :** le robot et l'humain interviennent dans un même processus de production, avec une coordination temporelle indirecte.
+- **Scénario 2 - Synchronisation / échange de pièces :** le robot et l'humain interviennent dans un même processus de production, avec une coordination indirecte basée sur des déclencheurs.
 
 Les modes de coopération et de collaboration directe ne font pas partie du périmètre principal de la démonstration finale. Ils peuvent être mentionnés comme perspectives.
 
@@ -43,14 +43,33 @@ Le mannequin humain sera d'abord simplifié pour garantir une intégration réal
 
 ### 2.3. Hors périmètre
 
-Les éléments suivants ne sont pas visés dans la version principale du projet :
+Les éléments suivants ne sont pas visés dans la version principale du projet. Ces limites
+sont fixées afin de concentrer le travail sur les besoins nécessaires aux scénarios
+retenus et de garder un objectif réalisable dans le temps disponible :
 
-- Contact physique direct entre l'humain et le robot.
-- Simulation biomécanique complète du corps humain.
-- Capture de mouvement en temps réel par caméra.
-- Contrôle dynamique complet de l'équilibre humain.
+- **Simulation biomécanique complète du corps humain :** elle n'est pas nécessaire pour
+  répondre au besoin du projet. L'objectif est de disposer d'un mannequin exploitable
+  dans RoboDK, avec les degrés de liberté utiles à la démonstration, et non de reproduire
+  fidèlement l'ensemble des phénomènes musculaires, articulaires ou physiologiques.
+- **Contrôle dynamique complet de l'équilibre humain :** ce contrôle n'est pas nécessaire
+  pour les scénarios retenus, puisque le mannequin est utilisé comme représentation
+  cinématique simplifiée de l'opérateur. Le projet ne cherche pas à simuler la stabilité
+  dynamique complète d'un corps humain en mouvement.
+- **Contact physique direct entre l'humain et le robot :** ce point n'est pas traité dans
+  la version principale, car les scénarios retenus reposent sur la coexistence et la
+  synchronisation par déclencheurs, sans interaction physique volontaire entre l'opérateur et
+  le robot. Il pourra être abordé comme perspective si le projet devait évoluer vers des
+  modes de coopération ou de collaboration plus avancés.
+- **Capture de mouvement en temps réel par caméra :** cette fonctionnalité dépasse le
+  périmètre actuel et demanderait du temps supplémentaire pour l'acquisition, le
+  traitement et la synchronisation des données. Elle constitue donc une perspective
+  intéressante pour rendre le mannequin plus interactif dans une version future.
 
-Ces points pourront être présentés comme limites ou perspectives.
+Ces choix permettent de garder le projet centré sur la modélisation, l'import et le
+pilotage d'un mannequin humain simplifié dans RoboDK. Les points liés au contact direct
+et à la capture de mouvement pourront être présentés comme perspectives à traiter avec
+plus de temps, tandis que la biomécanique complète et l'équilibre dynamique ne sont pas
+nécessaires pour atteindre les objectifs de la démonstration.
 
 ## 3. Scénarios retenus
 
@@ -66,7 +85,7 @@ L'objectif est d'assurer que le robot adapte son comportement en fonction de la 
 
 - Si un humain est détecté à moins de **1 m**, le robot ralentit.
 - Si un humain est détecté à moins de **0,5 m**, le robot s'arrête complètement.
-- Si un humain bloque un passage de porte pendant **30 secondes**, le robot recule pour lui laisser le passage.
+- Si un humain bloque un passage de porte pendant **10 secondes**, le robot recule pour lui laisser le passage.
 - Si l'humain se déplace et libère la zone, le robot reprend son trajet.
 - En espace ouvert, le robot s'arrête et attend que l'humain sorte de la zone critique.
 
@@ -77,8 +96,13 @@ L'objectif est d'assurer que le robot adapte son comportement en fonction de la 
 | COEX-F1 | Détecter la présence d'un humain dans la zone de déplacement du robot | Haute |
 | COEX-F2 | Ralentir le robot lorsque la distance humain-robot devient inférieure à 1 m | Haute |
 | COEX-F3 | Arrêter le robot lorsque la distance humain-robot devient inférieure à 0,5 m | Haute |
-| COEX-F4 | Gérer le cas d'un humain immobile devant une porte pendant 30 s | Moyenne |
+| COEX-F4 | Gérer le cas d'un humain immobile devant une porte pendant 10 s | Moyenne |
 | COEX-F5 | Reprendre automatiquement le trajet lorsque la zone redevient libre | Moyenne |
+
+Les exigences COEX-F1 à COEX-F3 sont prioritaires car elles concernent directement la
+sécurité : détecter, ralentir et arrêter le robot permet d'éviter tout risque de contact
+avec l'humain. COEX-F4 et COEX-F5 restent en priorité moyenne, car elles améliorent la
+fluidité du scénario sans relever de la mise en sécurité immédiate.
 
 #### 3.1.4. Critères de validation
 
@@ -86,46 +110,65 @@ L'objectif est d'assurer que le robot adapte son comportement en fonction de la 
 - Le comportement du robot change lorsque l'humain entre dans les zones critiques.
 - Le cas de blocage d'une porte ne doit pas conduire à l'arrêt de l'humain et du robot sans fin.
 
-### 3.2. Scénario 2 - Synchronisation
+### 3.2. Scénario 2 - Synchronisation / échange de pièces
 
 #### 3.2.1. Description
 
-Dans ce scénario, le robot et l'opérateur participent à un même processus industriel, mais sans contact direct. Le robot dépose une pièce dans une zone de transfert, puis l'opérateur vient récupérer cette pièce dans une fenêtre de temps donnée.
+Dans ce scénario, le robot et l'opérateur participent à un même processus industriel, mais sans contact direct. Le robot livre une pièce depuis le stock vers une zone de transfert, l'opérateur la récupère puis l'assemble, et le robot vient ensuite reprendre la pièce assemblée.
 
-L'objectif est de montrer une vraie synchronisation temporelle entre le robot et l'opérateur : le robot doit libérer la zone avant l'arrivée de l'humain, et l'humain doit récupérer la pièce dans le délai prévu sans entrer en conflit avec le mouvement du robot.
+L'objectif est de montrer une vraie synchronisation entre le robot et l'opérateur. Cette synchronisation ne doit pas reposer uniquement sur une temporisation fixe : elle doit être pilotée par des déclencheurs, par exemple un message sonore, un signal lumineux ou un log de simulation. Le robot signale que la pièce déposée est prête à être récupérée ; l'opérateur signale ensuite que la pièce assemblée est prête à être reprise par le robot.
 
 #### 3.2.2. Workflow retenu
 
 1. Le robot prélève une pièce au stock.
 2. Le robot transporte la pièce vers la zone de transfert.
-3. Le robot dépose la pièce dans la zone de transfert pendant un intervalle autorisé.
-4. Le robot quitte la zone de transfert ou se place dans une position d'attente non gênante.
-5. L'opérateur récupère la pièce dans la fenêtre de temps définie.
-6. Les règles de sécurité du scénario de coexistence restent actives pendant toute la séquence.
+3. Le robot dépose la pièce dans la zone de transfert.
+4. Le robot émet un déclencheur robot -> opérateur indiquant que la pièce est disponible.
+5. Le robot quitte la zone de transfert ou se place dans une position d'attente non gênante.
+6. L'opérateur récupère la pièce, réalise l'assemblage, puis dépose la pièce assemblée dans la zone de transfert.
+7. L'opérateur émet un déclencheur opérateur -> robot indiquant que la pièce assemblée est prête à être reprise.
+8. Le robot reprend la pièce assemblée lorsque la zone est libre.
+9. Les règles de sécurité du scénario de coexistence restent actives pendant toute la séquence.
 
 #### 3.2.3. Règles de fonctionnement
 
 - Une seule pièce est prise en compte dans la zone de transfert pour chaque cycle.
-- La récupération par l'opérateur doit se faire dans une fenêtre temporelle définie après le dépôt de la pièce.
+- La synchronisation repose sur un enchaînement d'états et de déclencheurs, et non sur un simple intervalle de temps fixe.
+- Une contrainte temporelle peut être conservée comme délai maximal d'attente ou critère de performance, mais elle ne constitue pas à elle seule le mécanisme de synchronisation.
+- Le robot doit pouvoir émettre un signal sonore, lumineux ou un log de simulation lorsqu'il dépose une pièce prête à être récupérée.
+- L'opérateur doit pouvoir déclencher un signal équivalent lorsqu'il dépose une pièce assemblée prête à être reprise par le robot.
 - Le robot et l'opérateur ne doivent pas occuper simultanément la zone de transfert.
 - Si l'opérateur arrive trop tôt ou si le robot tarde à quitter la zone, les règles de ralentissement et d'arrêt s'appliquent.
-- Le robot doit attendre dans une position non gênante lorsque la fenêtre de transfert n'est pas disponible.
+- Le robot doit attendre dans une position non gênante tant que le déclencheur attendu n'a pas été reçu ou que la zone de transfert n'est pas disponible.
 
 #### 3.2.4. Exigences fonctionnelles
 
 | ID | Exigence | Priorité |
 |---|---|---|
 | SYNC-F1 | Représenter une zone de stock, une zone de transfert et une zone opérateur | Haute |
-| SYNC-F2 | Modéliser l'état de la zone de transfert : libre, occupée par le robot, pièce disponible, occupée par l'opérateur | Haute |
-| SYNC-F3 | Définir une fenêtre temporelle de récupération de la pièce par l'opérateur | Haute |
+| SYNC-F2 | Modéliser l'état de la zone de transfert : libre, occupée par le robot, pièce disponible, occupée par l'opérateur, pièce assemblée disponible | Haute |
+| SYNC-F3 | Définir des déclencheurs de passation entre robot et opérateur : signal robot -> opérateur après dépôt, signal opérateur -> robot après dépôt de la pièce assemblée | Haute |
 | SYNC-F4 | Empêcher l'occupation simultanée de la zone de transfert par le robot et l'opérateur | Haute |
 | SYNC-F5 | Appliquer les règles de sécurité de coexistence pendant le dépôt et la récupération | Haute |
-| SYNC-F6 | Montrer une coordination temporelle entre dépôt robot et récupération humaine | Moyenne |
+| SYNC-F6 | Montrer une coordination par enchaînement d'états entre dépôt robot, récupération humaine, assemblage et reprise robot | Haute |
+| SYNC-F7 | Afficher ou simuler les déclencheurs par des messages sonores, signaux lumineux ou logs aux étapes clés | Moyenne |
+| SYNC-F8 | Conserver un délai maximal d'attente comme critère de performance, sans en faire le seul mécanisme de synchronisation | Moyenne |
+
+Les exigences SYNC-F1 à SYNC-F6 sont prioritaires car elles définissent le fonctionnement
+minimal du scénario de synchronisation : représenter les zones, suivre l'état de la zone de
+transfert, déclencher la passation dans les deux sens, empêcher l'occupation simultanée et
+maintenir les règles de sécurité. Sans ces éléments, le scénario ne permettrait pas de
+montrer un échange de pièces réellement synchronisé entre le robot et l'opérateur.
+SYNC-F7 et SYNC-F8 restent en priorité moyenne, car elles renforcent la lisibilité et
+l'évaluation de la démonstration, mais ne conditionnent pas directement la sécurité ni la
+validité minimale du mécanisme de passation.
 
 #### 3.2.5. Critères de validation
 
-- La simulation montre un cycle complet stock -> zone de transfert -> récupération opérateur.
-- L'opérateur récupère la pièce dans la fenêtre temporelle prévue.
+- La simulation montre un cycle complet stock -> zone de transfert -> récupération opérateur -> assemblage -> reprise robot.
+- Le passage d'une étape à l'autre est déclenché par des événements identifiables, et non par une simple attente fixe.
+- Un signal sonore, lumineux ou un log indique quand la pièce déposée par le robot est prête à être récupérée.
+- Un signal sonore, lumineux ou un log indique quand la pièce assemblée déposée par l'opérateur est prête à être reprise par le robot.
 - Le robot et l'opérateur ne se trouvent pas simultanément dans la zone de transfert.
 - La sécurité reste prioritaire sur la synchronisation.
 
@@ -220,7 +263,7 @@ Le projet a débuté par la réunion de lancement du **20 avril** et se termine 
 | S4 : 18-24 mai | Validation des scénarios retenus, choix des DDL utiles, distances de sécurité et structuration du cahier des charges. | Valider l'approche cinématique classique et les DDL utiles du mannequin. | Valider les distances de sécurité et les règles de ralentissement/arrêt. | Intégrer les décisions de réunion dans le cahier des charges et le planning. | Scénarios retenus, DDL et règles de sécurité validés. |
 | S5 : 25-31 mai | Finalisation du cahier des charges, formalisation du modèle cinématique et formulation mathématique. | Finaliser le tableau des DDL et formaliser la cinématique du mannequin. | Relier les normes aux scénarios, aux zones de sécurité et aux critères de validation. | Finaliser le cahier des charges et structurer le rapport. | Cahier des charges finalisé et formulation mathématique. |
 | S6 : 1-7 juin | Préparation des tests URDF/RoboDK et début du développement technique. | Préparer les tests URDF/RoboDK et vérifier l'exploitation des DDL. | Documenter les premiers tests, les choix techniques et les limites rencontrées. | Préparer les scénarios de test et les attendus de validation. | Protocole de tests et premiers essais techniques. |
-| S7 : 8-14 juin | Développement technique : import/adaptation du mannequin, scripts de pilotage et premiers tests de simulation. | Générer ou adapter le mannequin URDF, tester l'import et le pilotage dans RoboDK. | Mettre à jour le rapport avec les résultats intermédiaires et les analyses. | Valider les comportements de ralentissement, arrêt, attente et synchronisation temporelle. | Mannequin exploitable et premiers scripts de simulation. |
+| S7 : 8-14 juin | Développement technique : import/adaptation du mannequin, scripts de pilotage et premiers tests de simulation. | Générer ou adapter le mannequin URDF, tester l'import et le pilotage dans RoboDK. | Mettre à jour le rapport avec les résultats intermédiaires et les analyses. | Valider les comportements de ralentissement, arrêt, attente et synchronisation par déclencheurs. | Mannequin exploitable et premiers scripts de simulation. |
 | S8 : 15-21 juin | Intégration et validation des scénarios coexistence/synchronisation, captures, résultats et finalisation du fond du rapport. | Implémenter ou ajuster les animations dans RoboDK et stabiliser la démonstration. | Finaliser l'analyse des résultats et la partie validation du rapport. | Vérifier la cohérence des scénarios et préparer les captures de simulation. | Démonstrateurs validés et rapport en version quasi finale. |
 | Finalisation : 22-24 juin | Relecture finale, vérifications, répétition, correction des derniers détails, finalisation du support et soutenance du 24 juin. | Vérifier la démonstration technique et préparer les explications associées. | Vérifier la cohérence sécurité/normes et préparer les réponses aux questions. | Finaliser le support de soutenance, coordonner la répétition et les dernières corrections. | Rapport final, support final et soutenance du 24 juin. |
 
@@ -231,54 +274,57 @@ gantt
     title Planning prévisionnel PRBE Homme-Robot
     dateFormat  YYYY-MM-DD
     axisFormat  %d/%m
+    todayMarker off
+    tickInterval 1week
+    weekday monday
 
-    section Planning global
+    section Planning<br/>global
     S0 - Lancement                  :s0, 2026-04-20, 7d
     S1 - Recherche                  :s1, 2026-04-27, 7d
     S2 - Scénarios                  :s2, 2026-05-04, 7d
     S3 - Clarification              :s3, 2026-05-11, 7d
     S4 - Validation                 :s4, 2026-05-18, 7d
     S5 - CDC et maths               :s5, 2026-05-25, 7d
-    S6 - Tests techniques           :s6, 2026-06-01, 7d
-    S7 - Développement              :s7, 2026-06-08, 7d
-    S8 - Validation finale          :s8, 2026-06-15, 7d
+    S6 - Tests                      :s6, 2026-06-01, 7d
+    S7 - Dév.                       :s7, 2026-06-08, 7d
+    S8 - Validation                 :s8, 2026-06-15, 7d
     Soutenance                      :final, 2026-06-22, 3d
 
     section Niko
-    Notes et dépôt GitHub           :n0, 2026-04-20, 7d
+    Notes GitHub                    :n0, 2026-04-20, 7d
     Modèles humains                 :n1, 2026-04-27, 7d
     Import RoboDK                   :n2, 2026-05-04, 7d
-    Contraintes RoboDK              :n3, 2026-05-11, 7d
-    Cinématique et DDL              :n4, 2026-05-18, 7d
-    Formulation cinématique         :n5, 2026-05-25, 7d
-    Tests URDF/RoboDK               :n6, 2026-06-01, 7d
-    Développement RoboDK            :n7, 2026-06-08, 7d
+    Contraintes                     :n3, 2026-05-11, 7d
+    Cinématique                     :n4, 2026-05-18, 7d
+    Formulation                     :n5, 2026-05-25, 7d
+    Tests URDF                      :n6, 2026-06-01, 7d
+    Dév. RoboDK                     :n7, 2026-06-08, 7d
     Démonstration                   :n8, 2026-06-15, 7d
-    Vérification technique          :n9, 2026-06-22, 3d
+    Vérification                    :n9, 2026-06-22, 3d
 
     section Luc
-    Sécurité initiale               :l0, 2026-04-20, 7d
+    Sécurité                        :l0, 2026-04-20, 7d
     Normes H-R                      :l1, 2026-04-27, 7d
-    Risques scénarios               :l2, 2026-05-04, 7d
-    Modes d'interaction             :l3, 2026-05-11, 7d
-    Distances sécurité              :l4, 2026-05-18, 7d
-    Normes et critères              :l5, 2026-05-25, 7d
-    Documentation tests             :l6, 2026-06-01, 7d
-    Résultats intermédiaires        :l7, 2026-06-08, 7d
-    Analyse finale                  :l8, 2026-06-15, 7d
-    Vérification finale             :l9, 2026-06-22, 3d
+    Risques                         :l2, 2026-05-04, 7d
+    Interactions                    :l3, 2026-05-11, 7d
+    Distances                       :l4, 2026-05-18, 7d
+    Critères                        :l5, 2026-05-25, 7d
+    Doc. tests                      :l6, 2026-06-01, 7d
+    Résultats                       :l7, 2026-06-08, 7d
+    Analyse                         :l8, 2026-06-15, 7d
+    Vérification                    :l9, 2026-06-22, 3d
 
     section Alex
-    Contraintes mannequin           :a0, 2026-04-20, 7d
-    Documentation projet            :a1, 2026-04-27, 7d
-    Présentation 13 mai             :a2, 2026-05-04, 7d
-    Scénarios et exigences          :a3, 2026-05-11, 7d
-    Cahier des charges              :a4, 2026-05-18, 7d
-    Rapport et CDC                  :a5, 2026-05-25, 7d
-    Scénarios de test               :a6, 2026-06-01, 7d
-    Synchronisation                 :a7, 2026-06-08, 7d
-    Captures simulation             :a8, 2026-06-15, 7d
-    Support soutenance              :a9, 2026-06-22, 3d
+    Mannequin                       :a0, 2026-04-20, 7d
+    Documentation                   :a1, 2026-04-27, 7d
+    Présentation                    :a2, 2026-05-04, 7d
+    Exigences                       :a3, 2026-05-11, 7d
+    CDC                             :a4, 2026-05-18, 7d
+    Rapport                         :a5, 2026-05-25, 7d
+    Tests                           :a6, 2026-06-01, 7d
+    Synchro                         :a7, 2026-06-08, 7d
+    Captures                        :a8, 2026-06-15, 7d
+    Support                         :a9, 2026-06-22, 3d
 ```
 
 ## 8. Critères de réussite du projet
@@ -288,5 +334,5 @@ Le projet sera considéré réussi si :
 - Un mannequin humain est intégré ou représenté de manière exploitable dans RoboDK.
 - Les deux scénarios retenus sont clairement formalisés.
 - La simulation montre des comportements de sécurité cohérents : ralentissement, arrêt, attente.
-- Le scénario de synchronisation illustre une coordination temporelle entre robot et opérateur.
+- Le scénario de synchronisation illustre un échange de pièces coordonné par déclencheurs entre robot et opérateur.
 - Les choix techniques sont justifiés par les exigences, les contraintes RoboDK et les normes de sécurité.

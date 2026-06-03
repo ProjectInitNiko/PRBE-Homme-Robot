@@ -13,7 +13,13 @@ et le **torseur cinématique de chaque liaison**.
 Chaque articulation est représentée par sa **liaison** normalisée (NF EN ISO 3952) :
 la rotule (3 rotations) est **un seul symbole**, pas trois pivots.
 
-![Schéma cinématique normalisé du mannequin humain](img/schema-cinematique-mannequin.svg)
+### Vue de face
+
+![Schéma cinématique normalisé du mannequin humain — vue de face](img/schema-cinematique-face.png)
+
+### Vue de côté
+
+![Schéma cinématique normalisé du mannequin humain — vue de côté](img/schema-cinematique-cote.jpg)
 
 | Articulation | Liaison normalisée | DDL |
 |---|---|---|
@@ -86,4 +92,4 @@ Correspondance avec le mannequin :
 
 ---
 
-Modèle : [`examples/Niko_v2_PRBE.urdf`](../examples/Niko_v2_PRBE.urdf) (22 DDL, axes et butées).
+Modèle : [`examples/Niko_v1.urdf`](../examples/Niko_v1.urdf) (22 DDL, axes et butées).
