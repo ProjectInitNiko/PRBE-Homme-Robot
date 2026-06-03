@@ -278,7 +278,7 @@ gantt
     tickInterval 1week
     weekday monday
 
-    section Planning global
+    section Planning<br/>global
     S0 - Lancement                  :s0, 2026-04-20, 7d
     S1 - Recherche                  :s1, 2026-04-27, 7d
     S2 - Scénarios                  :s2, 2026-05-04, 7d
