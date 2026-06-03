@@ -274,6 +274,9 @@ gantt
     title Planning prévisionnel PRBE Homme-Robot
     dateFormat  YYYY-MM-DD
     axisFormat  %d/%m
+    todayMarker off
+    tickInterval 1week
+    weekday monday
 
     section Planning global
     S0 - Lancement                  :s0, 2026-04-20, 7d
@@ -282,46 +285,46 @@ gantt
     S3 - Clarification              :s3, 2026-05-11, 7d
     S4 - Validation                 :s4, 2026-05-18, 7d
     S5 - CDC et maths               :s5, 2026-05-25, 7d
-    S6 - Tests techniques           :s6, 2026-06-01, 7d
-    S7 - Développement              :s7, 2026-06-08, 7d
-    S8 - Validation finale          :s8, 2026-06-15, 7d
+    S6 - Tests                      :s6, 2026-06-01, 7d
+    S7 - Dév.                       :s7, 2026-06-08, 7d
+    S8 - Validation                 :s8, 2026-06-15, 7d
     Soutenance                      :final, 2026-06-22, 3d
 
     section Niko
-    Notes et dépôt GitHub           :n0, 2026-04-20, 7d
+    Notes GitHub                    :n0, 2026-04-20, 7d
     Modèles humains                 :n1, 2026-04-27, 7d
     Import RoboDK                   :n2, 2026-05-04, 7d
-    Contraintes RoboDK              :n3, 2026-05-11, 7d
-    Cinématique et DDL              :n4, 2026-05-18, 7d
-    Formulation cinématique         :n5, 2026-05-25, 7d
-    Tests URDF/RoboDK               :n6, 2026-06-01, 7d
-    Développement RoboDK            :n7, 2026-06-08, 7d
+    Contraintes                     :n3, 2026-05-11, 7d
+    Cinématique                     :n4, 2026-05-18, 7d
+    Formulation                     :n5, 2026-05-25, 7d
+    Tests URDF                      :n6, 2026-06-01, 7d
+    Dév. RoboDK                     :n7, 2026-06-08, 7d
     Démonstration                   :n8, 2026-06-15, 7d
-    Vérification technique          :n9, 2026-06-22, 3d
+    Vérification                    :n9, 2026-06-22, 3d
 
     section Luc
-    Sécurité initiale               :l0, 2026-04-20, 7d
+    Sécurité                        :l0, 2026-04-20, 7d
     Normes H-R                      :l1, 2026-04-27, 7d
-    Risques scénarios               :l2, 2026-05-04, 7d
-    Modes d'interaction             :l3, 2026-05-11, 7d
-    Distances sécurité              :l4, 2026-05-18, 7d
-    Normes et critères              :l5, 2026-05-25, 7d
-    Documentation tests             :l6, 2026-06-01, 7d
-    Résultats intermédiaires        :l7, 2026-06-08, 7d
-    Analyse finale                  :l8, 2026-06-15, 7d
-    Vérification finale             :l9, 2026-06-22, 3d
+    Risques                         :l2, 2026-05-04, 7d
+    Interactions                    :l3, 2026-05-11, 7d
+    Distances                       :l4, 2026-05-18, 7d
+    Critères                        :l5, 2026-05-25, 7d
+    Doc. tests                      :l6, 2026-06-01, 7d
+    Résultats                       :l7, 2026-06-08, 7d
+    Analyse                         :l8, 2026-06-15, 7d
+    Vérification                    :l9, 2026-06-22, 3d
 
     section Alex
-    Contraintes mannequin           :a0, 2026-04-20, 7d
-    Documentation projet            :a1, 2026-04-27, 7d
-    Présentation 13 mai             :a2, 2026-05-04, 7d
-    Scénarios et exigences          :a3, 2026-05-11, 7d
-    Cahier des charges              :a4, 2026-05-18, 7d
-    Rapport et CDC                  :a5, 2026-05-25, 7d
-    Scénarios de test               :a6, 2026-06-01, 7d
-    Synchronisation                 :a7, 2026-06-08, 7d
-    Captures simulation             :a8, 2026-06-15, 7d
-    Support soutenance              :a9, 2026-06-22, 3d
+    Mannequin                       :a0, 2026-04-20, 7d
+    Documentation                   :a1, 2026-04-27, 7d
+    Présentation                    :a2, 2026-05-04, 7d
+    Exigences                       :a3, 2026-05-11, 7d
+    CDC                             :a4, 2026-05-18, 7d
+    Rapport                         :a5, 2026-05-25, 7d
+    Tests                           :a6, 2026-06-01, 7d
+    Synchro                         :a7, 2026-06-08, 7d
+    Captures                        :a8, 2026-06-15, 7d
+    Support                         :a9, 2026-06-22, 3d
 ```
 
 ## 8. Critères de réussite du projet
