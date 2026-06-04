@@ -4,7 +4,7 @@
 
 **Contexte :** PRBE 2026 - ISAE-Supméca - Ligne ALIX
 
-**Équipe :** Niko Khachidze, Luc Fantasia, Alexandre Nowak
+**Équipe :** Nikoloz Khachidze, Luc Fantasia, Alexandre Nowak
 
 **Encadrants :** Francesco Ciampi, Thierno Diallo
 
@@ -209,9 +209,9 @@ Les degrés de liberté retenus correspondent uniquement à des rotations articu
 | **Total jambes** | **10** | 5 DDL par jambe, donc 10 DDL pour les deux jambes |
 | Épaule (x2) | 3 par bras | Rotation de l'épaule |
 | Coude (x2) | 1 par bras | Flexion du coude |
-| Poignet (x2) | 2 par bras | Orientation du poignet |
-| **Total bras** | **12** | 6 DDL par bras, donc 12 DDL pour les deux bras |
-| **Total retenu** | **22** | Jambes et bras uniquement |
+| Poignet (x2) | 1 par bras | Orientation du poignet |
+| **Total bras** | **10** | 5 DDL par bras, donc 10 DDL pour les deux bras |
+| **Total retenu** | **20** | Jambes et bras uniquement |
 
 Pour le scénario 1, le mannequin utilise uniquement les membres inférieurs afin de représenter les postures et déplacements de l'opérateur. Pour le scénario 2, le mannequin utilise les membres inférieurs et supérieurs, car l'opérateur doit se déplacer puis récupérer une pièce dans la zone de transfert.
 
@@ -254,7 +254,7 @@ Les distances retenues pour la simulation sont :
 
 Le projet a débuté par la réunion de lancement du **20 avril** et se termine par la soutenance prévue le **24 juin**. Le planning ci-dessous représente : chaque période précise les tâches à réaliser, les livrables attendus et la répartition entre les membres du groupe.
 
-| Période | Objectif de la période | Niko | Luc | Alex | Livrable / jalon |
+| Période | Objectif de la période | Nikoloz | Luc | Alex | Livrable / jalon |
 |---|---|---|---|---|---|
 | S0 : 20-26 avril | Lancement du projet, compréhension du sujet et identification du besoin : modéliser un mannequin humain cinématique dans RoboDK. | Structurer les notes de lancement et organiser le dépôt GitHub. | Identifier les premières contraintes de sécurité homme-robot. | Identifier les contraintes techniques liées au mannequin et à RoboDK. | Objectifs généraux du projet définis. |
 | S1 : 27 avril-3 mai | Recherche préliminaire sur les modèles humains, les approches cinématiques possibles et l'utilisation de Python/RoboDK. | Rechercher des solutions de mannequin humain et de modélisation cinématique. | Rechercher les premières références sur les interactions homme-robot et les normes. | Regrouper les sources et organiser la documentation projet. | Base documentaire initiale. |
@@ -290,7 +290,7 @@ gantt
     S8 - Validation                 :s8, 2026-06-15, 7d
     Soutenance                      :final, 2026-06-22, 3d
 
-    section Niko
+    section Nikoloz
     Notes GitHub                    :n0, 2026-04-20, 7d
     Modèles humains                 :n1, 2026-04-27, 7d
     Import RoboDK                   :n2, 2026-05-04, 7d
