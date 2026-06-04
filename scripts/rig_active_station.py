@@ -80,13 +80,17 @@ for key, items in seg.items():
             votes.append((it.Name(), geo_side, side))
 
 if not votes:
-    sys.exit("ERREUR : aucun nom _g/_d trouve pour deduire la convention.")
-swap_set = set((g == "R" and s == "G") or (g == "L" and s == "D") for _, g, s in votes)
-if len(swap_set) != 1:
-    for v in votes:
-        print("  vote:", v)
-    sys.exit("ERREUR : noms incoherents entre eux — dis-moi quel cote est le bon.")
-SWAP = swap_set.pop()
+    # Import frais (pas de renommage manuel) -> convention etablie le 04/06 :
+    # X+ = cote GAUCHE du mannequin, +Z = devant (verifiee par les renommages de Niko).
+    print("Pas de nom _g/_d -> convention par defaut : X+ = GAUCHE.")
+    SWAP = True
+else:
+    swap_set = set((g == "R" and s == "G") or (g == "L" and s == "D") for _, g, s in votes)
+    if len(swap_set) != 1:
+        for v in votes:
+            print("  vote:", v)
+        sys.exit("ERREUR : noms incoherents entre eux — dis-moi quel cote est le bon.")
+    SWAP = swap_set.pop()
 print("Convention :", "X+ = GAUCHE (R/L inverses vs hier)" if SWAP else "X+ = droit (comme hier)")
 
 def user_side(geo_side):
