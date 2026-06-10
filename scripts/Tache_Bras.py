@@ -36,6 +36,9 @@ import sys
 import time
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+# version embarquee dans la station : __file__ pointe vers un dossier temp,
+# il faut le chemin absolu du repo pour trouver Position_0
+sys.path.insert(0, r"D:\PRBE_Homme_Robot\PRBE-Homme-Robot\scripts")
 from robolink import Robolink, ITEM_TYPE_FRAME
 from robodk.robomath import Mat, transl, rotx, roty, rotz, invH
 
@@ -60,7 +63,7 @@ DT = 0.02                # tempo animation (s)
 # ---------------- bras gauche : DDL, axes, limites (deg) ----------------
 ARM = [
     ("shoulderL_abduction", "z", -90, 135),
-    ("shoulderL_flexion",   "x", -90, 90),
+    ("shoulderL_flexion",   "x", -120, 90),   # flexion humaine reelle : 180
     ("shoulderL_rotation",  "y", -45, 180),
     ("elbowL_flexion",      "x",   0, 145),
     ("wristL_flexion",      "x", -50, 60),
@@ -68,8 +71,11 @@ ARM = [
 ]
 ROT = {"x": rotx, "y": roty, "z": rotz}
 
-# bornes du scenario (incluses dans les limites humaines)
-LIM_SCEN = [(-45, 60), (-90, 20), (-45, 45), (0, 130), (-40, 50), (-25, 20)]
+# bornes du scenario (incluses dans les limites humaines).
+# Flexion epaule jusqu'a -120 (30 deg au-dessus de l'horizontale) : sans
+# ca, lever la main pres du corps pour franchir le bord de table est
+# inatteignable et l'IK se contorsionne.
+LIM_SCEN = [(-45, 60), (-120, 20), (-45, 45), (0, 130), (-40, 50), (-25, 20)]
 
 # ORIENTATION DE LA MAIN — c'est le coeur du fix : l'IK position seule
 # laissait la paume dans une orientation quelconque (de travers, doigts en
@@ -94,8 +100,33 @@ WO = 65.0           # poids de l'orientation (mm equivalents par radian) :
 LAM = 5.0           # amortissement DLS (petit : sinon sur-amorti = pas de
                     # convergence ; remonte pres des singularites via clamp)
 
+# POSTURE DE CONFORT — l'IK seule a plusieurs "branches" de solutions et,
+# sans preference, elle tombe dans des poses contorsionnees (bras croise
+# devant le corps, coude a fond, poignets aux butees = le mouvement
+# "n'importe quoi"). La posture est integree comme TACHE SECONDAIRE dans
+# les moindres carres amortis (poids WQ << tache principale) : elle
+# selectionne la branche naturelle (epaule ecartee a gauche, coude mi-plie,
+# poignet neutre) et eloigne des butees, sans voler la cible a l'IK.
+Q_CONF = [30.0, -60.0, 30.0, 50.0, 10.0, 0.0]
+# Posture "main pres du corps" pour MONTER/DESCENDRE le long du corps :
+# coude bien PLIE (le geste humain : on remonte la main pres de la poitrine
+# puis on etend le bras). Sans ce guide, l'IK reste sur la branche coude
+# mi-plie / epaule vrillee -> coude qui semble se plier a l'envers + blocage
+# au franchissement du bord de table.
+Q_FOLD = [25.0, -95.0, 35.0, 105.0, -10.0, 0.0]
+WQ = 1.2            # poids posture (via WQ^2) — assez pour departager les
+                    # branches, assez faible pour ~2 mm de biais a l'equilibre
+
 RDK = Robolink()
 print("Station :", RDK.ActiveStation().Name())
+
+# REMISE A ZERO systematique avant de capturer le repos : le script fait
+# confiance a l'etat courant du mannequin (REST = poses au demarrage) ; si
+# une animation precedente a ete interrompue bras en l'air, tout le modele
+# FK serait corrompu. Position_0 garantit le garde-a-vous exact.
+from Position_0 import remettre_a_zero
+remettre_a_zero(RDK, verbose=False)
+print("Mannequin remis a zero (garde-a-vous).")
 
 
 # ---------------- scene : table + piece ----------------
@@ -232,11 +263,17 @@ def _residu(q, tpos):
     return math.sqrt(sum(v*v for v in ep)), math.degrees(no_)
 
 
-def ik(tpos, q0, tol_p=6.0, tol_o=0.09, iters=240, patience=22):
+def ik(tpos, q0, tol_p=6.0, tol_o=0.09, iters=240, patience=22, wo=WO,
+       qconf=None):
     """IK 6 DOF position + orientation, DLS amortie. S'arrete des que la
     cible est atteinte OU que le residu stagne (patience) — indispensable
     pour ne pas mouliner 500 iterations sur un point hors d'atteinte.
+    wo = poids d'orientation : strict (WO) quand la main porte la piece,
+    souple a main vide (la main peut s'incliner, comme un humain).
+    qconf = posture de confort guidant le choix de branche (Q_CONF, ou
+    Q_FOLD pour les phases pres du corps).
     Retourne (q, residu_pos_mm, residu_ori_deg)."""
+    qc = Q_CONF if qconf is None else qconf
     q = clamp(list(q0))
     best_q, best_s, stale = q[:], 1e18, 0
     for _ in range(iters):
@@ -247,7 +284,7 @@ def ik(tpos, q0, tol_p=6.0, tol_o=0.09, iters=240, patience=22):
         eo = ori_err(Rc, RG)
         np_ = math.sqrt(sum(v*v for v in ep))
         no_ = math.sqrt(sum(v*v for v in eo))
-        s = np_ + WO * no_                       # score combine
+        s = np_ + wo * no_                       # score combine
         if s < best_s - 0.05:                    # progres (meme fin)
             best_s, best_q, stale = s, q[:], 0
         else:
@@ -256,7 +293,7 @@ def ik(tpos, q0, tol_p=6.0, tol_o=0.09, iters=240, patience=22):
             return q, np_, math.degrees(no_)
         if stale >= patience:                    # plus de progres -> stop
             break
-        x = ep + [WO * v for v in eo]            # tache 6D (pos mm ; ori ponderee)
+        x = ep + [wo * v for v in eo]            # tache 6D (pos mm ; ori ponderee)
         # Jacobien 6x6 par differences finies (lignes 0-2 position, 3-5 orient)
         J = [[0.0] * 6 for _ in range(6)]
         for j in range(6):
@@ -267,14 +304,34 @@ def ik(tpos, q0, tol_p=6.0, tol_o=0.09, iters=240, patience=22):
             dphi = ori_err(Rc, cols(Pj))         # petite rotation Rc -> Rj
             for i in range(3):
                 J[i][j] = (pj[i] - p[i]) / 0.5
-                J[3 + i][j] = WO * dphi[i] / 0.5
-        # DLS : dq = J^T (J J^T + lam^2 I)^-1 x
-        JJT = [[sum(J[i][k] * J[r][k] for k in range(6)) + (LAM * LAM if i == r else 0)
+                J[3 + i][j] = wo * dphi[i] / 0.5
+        # DLS en equations normales, avec tache posturale secondaire :
+        # (J^T J + (LAM^2 + wq2) I) dq = J^T x + wq2 (Q_CONF - q)
+        # Le poids postural S'ESTOMPE avec le residu : il departage les
+        # branches LOIN de la cible, puis s'efface (sinon il vole les
+        # derniers millimetres a la tache).
+        wq2 = (WQ * min(1.0, np_ / 60.0)) ** 2
+        reg = LAM * LAM + wq2
+        JTJ = [[sum(J[k][i] * J[k][r] for k in range(6)) + (reg if i == r else 0)
                 for r in range(6)] for i in range(6)]
-        y = _solve6(JJT, x)
-        for j in range(6):
-            q[j] += sum(J[i][j] * y[i] for i in range(6))
-        q = clamp(q)
+        b = [sum(J[k][j] * x[k] for k in range(6)) + wq2 * (qc[j] - q[j])
+             for j in range(6)]
+        dq = _solve6(JTJ, b)
+        # rebroussement : si le pas complet EMPIRE le score (overshoot,
+        # frequent pres du zero exact ou des butees), on le reduit de
+        # moitie — sinon l'IK oscille sur place et le critere de
+        # stagnation conclut a tort "bloque".
+        scale, q_try = 1.0, None
+        for _ in range(3):
+            q_try = clamp([q[j] + scale * dq[j] for j in range(6)])
+            Pt = fk_pose(q_try)
+            ept = [tpos[i] - eff_pos(Pt)[i] for i in range(3)]
+            eot = ori_err(cols(Pt), RG)
+            st = math.sqrt(sum(v*v for v in ept)) + wo * math.sqrt(sum(v*v for v in eot))
+            if st < s:
+                break
+            scale *= 0.5
+        q = q_try
     rp, ro = _residu(best_q, tpos)               # renvoie le MEILLEUR vu
     return best_q, rp, ro
 
@@ -289,8 +346,8 @@ def ik_multi(tpos, q0):
     bq, bp, bo = ik(tpos, q0)
     if bp < 12:                                    # contact atteint -> fini
         return bq, bp, bo
-    for s in ([20, -55, 10, 80, -10, 0],          # bras devant, coude plie
-              [0, -45, 20, 60, 0, 0]):
+    for s in ([45, -85, 45, 40, 35, 5],           # bras leve au-dessus de la table
+              [30, -60, 30, 50, 10, 0]):          # prehension naturelle
         q, rp, ro = ik(tpos, s)
         if score(rp, ro) < score(bp, bo):
             bq, bp, bo = q, rp, ro
@@ -304,35 +361,78 @@ def applique(q):
         F[nom].setPose(REST[nom] * ROT[axe](math.radians(a)))
 
 
-# ---------------- choregraphie : CHEMIN CARTESIEN anti-collision ----------------
-# Le probleme des collisions vient de l'interpolation dans l'espace des
-# ARTICULATIONS : entre deux poses sans collision, la main peut quand meme
-# plonger dans la table en chemin. On pilote donc l'EFFECTEUR (centre main)
-# dans l'espace CARTESIEN, le long d'un chemin que l'on route explicitement
-# AU-DESSUS de la table. Regle : on ne franchit la zone de la table (en Z)
-# qu'a haute altitude (HOME_Y) ; les approches/depots sont VERTICAUX.
+# ---------------- choregraphie : SPLINE CARTESIENNE fluide ----------------
+# v2 "mouvement humain". Les recettes (diagnostics _diag_points/_diag_bord) :
+#   1. CHEMIN par via-points VALIDES atteignables (l'ancien transit haut
+#      colle au corps etait hors d'atteinte -> l'IK se contorsionnait) ;
+#   2. SPLINE Catmull-Rom au lieu de segments en creneau : pas d'arrets
+#      nets a chaque coin, la main suit une courbe continue ;
+#   3. ORIENTATION par phase : stricte quand la main PORTE la piece,
+#      souple a main vide (un humain laisse la main s'incliner en chemin —
+#      et ca etend l'atteignabilite au-dessus du bord de table) ;
+#   4. VITESSE ARTICULAIRE BORNEE (DQ_MAX) : aucun saut de configuration ;
+#   5. profil en cloche par phase + micro-pauses a la saisie / depose.
+# Collision table : on ne survole le plateau (Z > 180) que paume >= 1025
+# (doigts ~115 mm sous la paume -> ils passent au-dessus des 900 mm).
 cube_y = TABLE_TOP + CUBE / 2.0          # centre du cube
 cube_top = cube_y + CUBE / 2.0           # haut du cube
 GRASP_Y = cube_top + GRASP_CLEAR         # centre main quand elle tient le cube
-mx, mz = (PICK_X + PLACE_X) / 2.0, (PICK_Z + PLACE_Z) / 2.0
 
 q_rest = [0.0] * 6
 rest_pos = eff_pos(fk_pose(q_rest))      # main au repos (devant le bassin)
-zc = rest_pos[2]                         # Z cote corps, en-deca du bord de table
 
-# chemin de l'effecteur : (label, position monde, evenement)
-PATH = [
-    ("montee",     (PICK_X, HOME_Y, zc),                 None),     # monter cote corps
-    ("survol_pick",(PICK_X, HOME_Y, PICK_Z),             None),     # franchir par le haut
-    ("approche",   (PICK_X, GRASP_Y + APPROACH, PICK_Z), None),     # descente
-    ("saisie",     (PICK_X, GRASP_Y, PICK_Z),            "grab"),
-    ("levee",      (PICK_X, HOME_Y, PICK_Z),             None),     # remontee verticale
-    ("transfert",  (mx, HOME_Y, mz),                     "snap2"),  # transit en hauteur
-    ("pre_depose", (PLACE_X, HOME_Y, PLACE_Z),           None),
-    ("depose",     (PLACE_X, GRASP_Y, PLACE_Z),          "release"),  # descente verticale
-    ("degage",     (PLACE_X, HOME_Y, PLACE_Z),           None),     # remontee verticale
-    ("survol_back",(PLACE_X, HOME_Y, zc),                None),     # franchir au retour
-    ("repos",      rest_pos,                             None),     # revenir au repos
+HI = 1085                                # plafond de transit valide (IK ~2-9 mm)
+WO_LIBRE = 22.0                          # orientation souple (main vide)
+DQ_MAX = 8.0                             # deg max par pas d'animation
+P_REST = tuple(rest_pos)
+P_GRASP = (PICK_X, GRASP_Y, PICK_Z)
+P_PLACE = (PLACE_X, GRASP_Y, PLACE_Z)
+
+# --- phase "tendre" en ESPACE ARTICULAIRE --------------------------------
+# Suivre une cible cartesienne pendant que le bras se reconfigure en grand
+# (bras pendant -> plie pres du corps -> etendu au-dessus de la table) fait
+# balayer la main n'importe ou en chemin (y compris a travers la table) :
+# l'IK instantanee et la pose appliquee (vitesse bornee) divergent. Pour ce
+# geste a main vide on interpole donc entre des POSTURES CLES — le geste
+# balistique humain : repos -> main pliee pres de la poitrine ->
+# franchissement du bord -> au-dessus de la piece. Les postures sont
+# RESOLUES une fois ici, le chemin interpole est verifie par _diag.
+TEND_PTS = [(225, 1005, 125), (290, 1050, 170), (315, 1065, 260),
+            (PICK_X, HI, PICK_Z)]
+QK_TEND = [list(q_rest)]
+_qk = list(Q_FOLD)                      # seed plie : selectionne la bonne branche
+for _p in TEND_PTS:
+    _qk, _rp, _ro = ik(list(_p), _qk, iters=300, patience=40,
+                       wo=WO_LIBRE, qconf=Q_FOLD)
+    QK_TEND.append(list(_qk))
+    print(f"  clef tendre ({_p[0]:.0f},{_p[1]:.0f},{_p[2]:.0f}) : "
+          f"res {_rp:.1f} mm / {_ro:.1f} deg")
+
+# Franchissement du bord de table (face avant a Z=180) : on MONTE d'abord
+# pres du corps coude PLIE, et on ne pousse vers l'avant qu'une fois la
+# paume au-dessus de ~1040 (doigts > 925 > plateau 900).
+# phases : (label, mode, donnees, poids ori, posture, pas, pause_s, evenement)
+#   mode "joint" : donnees = postures cles (interpolation articulaire)
+#   mode "cart"  : donnees = via-points cartesiens (IK par pas)
+PHASES = [
+    ("tendre", "joint", QK_TEND, WO_LIBRE, Q_FOLD, 40, 0.0, None),
+    ("saisir", "cart",                               # descente verticale, lente
+     [(PICK_X, HI, PICK_Z), (PICK_X, GRASP_Y + 25, PICK_Z), P_GRASP],
+     WO, Q_CONF, 14, 0.35, "grab"),
+    ("transporter", "cart",                          # arc au-dessus de la table
+     [P_GRASP, (PICK_X, HI, PICK_Z), ((PICK_X + PLACE_X) / 2.0, HI + 5, PICK_Z),
+      (PLACE_X, HI, PLACE_Z)],
+     WO, Q_CONF, 30, 0.0, "snap2"),
+    ("deposer", "cart",                              # descente verticale, lente
+     [(PLACE_X, HI, PLACE_Z), (PLACE_X, GRASP_Y + 10, PLACE_Z), P_PLACE],
+     WO, Q_CONF, 12, 0.35, "release"),
+    ("degager", "cart",                              # remonter main encore droite
+     [P_PLACE, (PLACE_X, HI, PLACE_Z)],
+     WO, Q_CONF, 10, 0.0, None),
+    ("ramener", "cart",                              # revenir haut, puis
+     [(PLACE_X, HI, PLACE_Z), (140, 1055, 290),      # redescendre pres du corps
+      (150, 1045, 185), (150, 1020, 135), (160, 920, 115), P_REST],
+     WO_LIBRE, Q_FOLD, 52, 0.0, None),
 ]
 
 SNAP = "--snap" in sys.argv
@@ -345,47 +445,86 @@ def snap(name):
         RDK.Command("Snapshot", SNAPDIR + "\\" + name + ".png")
 
 
-def cart_seg(p_from, p_to, q, steps=STEPS):
-    """Anime l'effecteur en LIGNE DROITE p_from -> p_to (ease-in-out), en
-    resolvant l'IK a chaque pas (warm-start = rapide). Calcul et rendu
-    entrelaces : le bras bouge tout de suite, pas d'attente prealable."""
+def _dist(a, b):
+    return math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b)))
+
+
+def catmull(pts, u):
+    """Point sur la spline Catmull-Rom passant par pts (u dans [0, 1],
+    parametrisation par longueur de corde — vitesse homogene le long du
+    chemin). Marche en dimension quelconque (3D cartesien ou 6D
+    articulaire). 2 points = segment droit."""
+    P = [pts[0]] + list(pts) + [pts[-1]]
+    L = [_dist(pts[i], pts[i + 1]) for i in range(len(pts) - 1)]
+    tot = sum(L) or 1.0
+    s = u * tot
+    i = 0
+    while i < len(L) - 1 and s > L[i]:
+        s -= L[i]
+        i += 1
+    t = s / (L[i] or 1.0)
+    p0, p1, p2, p3 = P[i], P[i + 1], P[i + 2], P[i + 3]
+    return [0.5 * (2 * p1[k] + (-p0[k] + p2[k]) * t
+                   + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t * t
+                   + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t ** 3)
+            for k in range(len(pts[0]))]
+
+
+def anim_phase(label, mode, data, q, wo=WO, qconf=None, steps=26, pause=0.0):
+    """Anime une phase. mode "cart" : spline cartesienne suivie par IK
+    warm-start. mode "joint" : interpolation articulaire entre postures
+    cles. Dans les deux cas la pose appliquee est a VITESSE ARTICULAIRE
+    BORNEE (DQ_MAX deg/pas) -> fluidite garantie."""
     for s in range(1, steps + 1):
         t = s / steps
-        t = t * t * (3 - 2 * t)
-        tgt = [p_from[i] + (p_to[i] - p_from[i]) * t for i in range(3)]
-        q, _, _ = ik(tgt, q, iters=60, patience=8)
+        t = t * t * (3 - 2 * t)                  # cloche : doux aux extremites
+        if mode == "joint":
+            qs = catmull(data, t)
+        else:
+            tgt = catmull(data, t)
+            qs, _, _ = ik(tgt, q, iters=60, patience=8, wo=wo, qconf=qconf)
+        q = [a + max(-DQ_MAX, min(DQ_MAX, b - a)) for a, b in zip(q, qs)]
         applique(q)
         RDK.Render(True)
+        if SNAP and s in (steps // 3, 2 * steps // 3):
+            snap(f"ph_{label}_{s:02d}")
         time.sleep(DT)
+    if pause:
+        time.sleep(pause)
     return q
 
 
-print("--- Animation (chemin cartesien, anti-collision table) ---")
-station = RDK.ActiveStation()
-wrist = F[ARM[-1][0]]
-if "--frames" not in sys.argv:                # demo propre : cacher les reperes
-    for fr in RDK.ItemList(ITEM_TYPE_FRAME):
-        fr.setVisible(False, False)
-piece.setParentStatic(station)                # remettre la piece au depart
-piece.setPose(transl(PICK_X, cube_y, PICK_Z))
-applique(q_rest)
-RDK.Render(True)
-time.sleep(0.3)
+def main():
+    print("--- Animation v2 (spline fluide, posture naturelle) ---")
+    station = RDK.ActiveStation()
+    wrist = F[ARM[-1][0]]
+    if "--frames" not in sys.argv:            # demo propre : cacher les reperes
+        for fr in RDK.ItemList(ITEM_TYPE_FRAME):
+            fr.setVisible(False, False)
+    piece.setParentStatic(station)            # remettre la piece au depart
+    piece.setPose(transl(PICK_X, cube_y, PICK_Z))
+    applique(q_rest)
+    RDK.Render(True)
+    time.sleep(0.3)
 
-q, cur = q_rest, rest_pos
-for label, pos, event in PATH:
-    q = cart_seg(cur, pos, q)
-    cur = pos
-    if event == "grab":
-        piece.setParentStatic(wrist)          # la piece suit la main
-        print("  piece saisie")
-        snap("tache_1_saisie")
-    elif event == "snap2":
-        snap("tache_2_transfert")
-    elif event == "release":
-        piece.setParentStatic(station)
-        piece.setPose(transl(PLACE_X, cube_y, PLACE_Z))   # posee a plat, a la cible
-        print(f"  piece deposee en ({PLACE_X:.0f}, {cube_y:.0f}, {PLACE_Z:.0f})")
-        snap("tache_3_depose")
-snap("tache_4_final")
-print("Fini — piece deplacee de gauche a droite, sans toucher la table.")
+    q = q_rest
+    for label, mode, data, wo, qconf, steps, pause, event in PHASES:
+        q = anim_phase(label, mode, data, q, wo=wo, qconf=qconf,
+                       steps=steps, pause=pause)
+        if event == "grab":
+            piece.setParentStatic(wrist)      # la piece suit la main
+            print("  piece saisie")
+            snap("tache_1_saisie")
+        elif event == "snap2":
+            snap("tache_2_transfert")
+        elif event == "release":
+            piece.setParentStatic(station)
+            piece.setPose(transl(PLACE_X, cube_y, PLACE_Z))   # posee a plat
+            print(f"  piece deposee en ({PLACE_X:.0f}, {cube_y:.0f}, {PLACE_Z:.0f})")
+            snap("tache_3_depose")
+    snap("tache_4_final")
+    print("Fini — piece deplacee de gauche a droite, sans toucher la table.")
+
+
+if __name__ == "__main__":
+    main()
