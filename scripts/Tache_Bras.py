@@ -41,9 +41,11 @@ TABLE_TH = 40            # epaisseur plateau
 TABLE_CZ = 455           # centre du plateau devant le mannequin (Z)
 CUBE = 80                # arete de la piece cubique
 PICK_X, PICK_Z = 330, 400        # piece au depart : a GAUCHE (X+)
-PLACE_X, PLACE_Z = -50, 400      # depose : vers la DROITE
+PLACE_X, PLACE_Z = 80, 400       # depose : 25 cm vers la DROITE (rester
+                                 # anatomique : pas de traversee complete
+                                 # du corps avec le bras gauche)
 PALM = 55                # distance paume <-> centre du cube a la saisie
-APPROACH = 80            # hauteur d'approche au-dessus du cube
+APPROACH = 50            # hauteur d'approche au-dessus du cube
 STEPS = 18               # pas d'interpolation par phase
 DT = 0.025               # tempo animation (s)
 
@@ -57,6 +59,15 @@ ARM = [
     ("wristL_deviation",    "z", -30, 20),
 ]
 ROT = {"x": rotx, "y": roty, "z": rotz}
+
+# posture naturelle pour CE scenario (saisie sur table) : l'IK position
+# seule part en contorsions (coude au ciel, paume vers le haut, poignet en
+# butee) si on la laisse libre -> 3 garde-fous :
+LIM_SCEN = [(-45, 60), (-90, 20), (-30, 30), (0, 120), (-25, 25), (-15, 15)]
+W = [1.0, 1.0, 0.4, 1.0, 0.3, 0.3]          # cout de mouvement (poignet cher)
+Q_NAT = [10, -45, 0, 50, 0, 0]              # posture de reference (biais)
+K_NAT = 0.002                               # rappel postural (doux !)
+NAT_ZONE = 25.0                             # rappel actif seulement pres de la cible (mm)
 
 RDK = Robolink()
 print("Station :", RDK.ActiveStation().Name())
@@ -141,11 +152,13 @@ def fk(q):
 
 
 def clamp(q):
-    return [max(lo, min(hi, a)) for (nom, axe, lo, hi), a in zip(ARM, q)]
+    """Bornes du scenario (incluses dans les limites humaines de ARM)."""
+    return [max(lo, min(hi, a)) for (lo, hi), a in zip(LIM_SCEN, q)]
 
 
 def ik(target, q0, tol=8.0, iters=200):
-    """Moindres carres amortis vers `target` (position, mm). Retourne (q, residu)."""
+    """Moindres carres amortis PONDERES vers `target` (position, mm),
+    avec rappel postural vers Q_NAT. Retourne (q, residu)."""
     q = clamp(list(q0))
     lam2 = 25.0 ** 2                     # amortissement (mm^2)
     for _ in range(iters):
@@ -162,18 +175,20 @@ def ik(target, q0, tol=8.0, iters=200):
             pj = fk(dq)
             for i in range(3):
                 J[i][j] = (pj[i] - p[i]) / 0.5
-        # dq = J^T (J J^T + lam I)^-1 err   (3x3 a inverser)
-        JJT = [[sum(J[i][k] * J[r][k] for k in range(6)) + (lam2 if i == r else 0)
-                for r in range(3)] for i in range(3)]
+        # dq = W^2 J^T (J W^2 J^T + lam I)^-1 err  (poids = cout par DDL)
+        JJT = [[sum(W[k] * W[k] * J[i][k] * J[r][k] for k in range(6))
+                + (lam2 if i == r else 0) for r in range(3)] for i in range(3)]
         # inversion 3x3 (Cramer)
         a, b, c = JJT[0]; d, e2, f = JJT[1]; g, h, i2 = JJT[2]
         det = a*(e2*i2-f*h) - b*(d*i2-f*g) + c*(d*h-e2*g)
         inv = [[(e2*i2-f*h)/det, (c*h-b*i2)/det, (b*f-c*e2)/det],
                [(f*g-d*i2)/det, (a*i2-c*g)/det, (c*d-a*f)/det],
                [(d*h-e2*g)/det, (b*g-a*h)/det, (a*e2-b*d)/det]]
-        w = [sum(inv[i][k] * err[k] for k in range(3)) for i in range(3)]
+        v = [sum(inv[i][k] * err[k] for k in range(3)) for i in range(3)]
         for j in range(6):
-            q[j] += sum(J[i][j] * w[i] for i in range(3))
+            q[j] += W[j] * W[j] * sum(J[i][j] * v[i] for i in range(3))
+            if n < NAT_ZONE:                     # rappel postural doux,
+                q[j] += K_NAT * (Q_NAT[j] - q[j])  # seulement pres du but
         q = clamp(q)
     p = fk(q)
     return q, math.sqrt(sum((target[i] - p[i]) ** 2 for i in range(3)))
@@ -187,10 +202,11 @@ def ik_multi(target, q0, tol=8.0):
     best_q, best_r = ik(target, q0, tol)
     if best_r < 30:
         return best_q, best_r
-    seeds = [[0.0] * 6,
-             [30, -45, 45, 70, 0, 0],    # bras leve devant, coude plie
-             [-30, -60, 90, 90, 0, 0]]   # bras croise devant
-    seeds += [[rng.uniform(lo, hi) for (nom, axe, lo, hi) in ARM] for _ in range(5)]
+    seeds = [list(Q_NAT),
+             [0.0] * 6,
+             [20, -60, 0, 80, 0, 0],     # bras devant, coude bien plie
+             [-20, -70, 0, 40, 0, 0]]    # bras tendu devant-bas
+    seeds += [[rng.uniform(lo, hi) for lo, hi in LIM_SCEN] for _ in range(5)]
     for s in seeds:
         q, r = ik(target, s, tol)
         if r < best_r:
@@ -221,7 +237,7 @@ targets = [
     ("approche",  (PICK_X, GRASP_Y + APPROACH, PICK_Z)),
     ("saisie",    (PICK_X, GRASP_Y, PICK_Z)),
     ("levee",     (PICK_X, GRASP_Y + APPROACH, PICK_Z)),
-    ("transfert", ((PICK_X + PLACE_X) / 2.0, GRASP_Y + APPROACH + 40, (PICK_Z + PLACE_Z) / 2.0)),
+    ("transfert", ((PICK_X + PLACE_X) / 2.0, GRASP_Y + APPROACH, (PICK_Z + PLACE_Z) / 2.0)),
     ("pre-depose", (PLACE_X, GRASP_Y + APPROACH, PLACE_Z)),
     ("depose",    (PLACE_X, GRASP_Y, PLACE_Z)),
     ("degage",    (PLACE_X, GRASP_Y + APPROACH, PLACE_Z)),
@@ -229,17 +245,20 @@ targets = [
 
 q_rest = [0.0] * 6
 configs, q = {}, q_rest
+CRITIQUES = {"saisie": 30, "depose": 30}     # seuil serre au contact,
+SEUIL_TRANSIT = 50                            # tolerant en transit (en vol)
 print("--- IK ---")
 ok = True
 for nom, tgt in targets:
     q, res = ik_multi(tgt, q)
     configs[nom] = q
-    flag = "OK " if res < 30 else "!! "
-    if res >= 30:
+    seuil = CRITIQUES.get(nom, SEUIL_TRANSIT)
+    flag = "OK " if res < seuil else "!! "
+    if res >= seuil:
         ok = False
     print(f"  {flag}{nom:10s} cible ({tgt[0]:5.0f},{tgt[1]:5.0f},{tgt[2]:5.0f})  residu {res:5.1f} mm")
 if not ok:
-    print("!! certains residus depassent 30 mm — scene peut-etre hors d'atteinte, ajuster les parametres")
+    print("!! residus hors seuil — scene peut-etre hors d'atteinte, ajuster les parametres")
 
 SNAP = "--snap" in sys.argv
 SNAPDIR = r"D:\PRBE_Homme_Robot\PRBE-Homme-Robot\scripts\_debug_reperes"
