@@ -51,8 +51,11 @@ PLACE_X, PLACE_Z = 80, 400       # depose : 25 cm vers la DROITE (rester
                                  # du corps avec le bras gauche)
 GRASP_CLEAR = 35         # centre de la main au-dessus du haut du cube (saisie)
 APPROACH = 45            # hauteur d'approche / de levee (le cube degage la table)
-STEPS = 18               # pas d'interpolation par phase
-DT = 0.025               # tempo animation (s)
+HOME_Y = 1070            # hauteur de transit (centre main) : la main passe
+                         # PAR-DESSUS la table. Atteignable + degage le plateau
+                         # (doigts ~115 mm sous le centre -> ~955 > haut table 900)
+STEPS = 14               # pas par segment cartesien
+DT = 0.02                # tempo animation (s)
 
 # ---------------- bras gauche : DDL, axes, limites (deg) ----------------
 ARM = [
@@ -301,51 +304,36 @@ def applique(q):
         F[nom].setPose(REST[nom] * ROT[axe](math.radians(a)))
 
 
-def anime(q_from, q_to, steps=STEPS):
-    for s in range(1, steps + 1):
-        t = s / steps
-        t = t * t * (3 - 2 * t)          # lissage ease-in-out
-        applique([qa + (qb - qa) * t for qa, qb in zip(q_from, q_to)])
-        RDK.Render(True)
-        time.sleep(DT)
-
-
-# ---------------- choregraphie ----------------
-# l'effecteur est le CENTRE de la main ; paume vers le bas, la main coiffe
-# le cube -> on vise au-dessus du haut du cube.
+# ---------------- choregraphie : CHEMIN CARTESIEN anti-collision ----------------
+# Le probleme des collisions vient de l'interpolation dans l'espace des
+# ARTICULATIONS : entre deux poses sans collision, la main peut quand meme
+# plonger dans la table en chemin. On pilote donc l'EFFECTEUR (centre main)
+# dans l'espace CARTESIEN, le long d'un chemin que l'on route explicitement
+# AU-DESSUS de la table. Regle : on ne franchit la zone de la table (en Z)
+# qu'a haute altitude (HOME_Y) ; les approches/depots sont VERTICAUX.
 cube_y = TABLE_TOP + CUBE / 2.0          # centre du cube
 cube_top = cube_y + CUBE / 2.0           # haut du cube
 GRASP_Y = cube_top + GRASP_CLEAR         # centre main quand elle tient le cube
-targets = [
-    ("approche",  (PICK_X, GRASP_Y + APPROACH, PICK_Z)),
-    ("saisie",    (PICK_X, GRASP_Y, PICK_Z)),
-    ("levee",     (PICK_X, GRASP_Y + APPROACH, PICK_Z)),
-    ("transfert", ((PICK_X + PLACE_X) / 2.0, GRASP_Y + APPROACH, (PICK_Z + PLACE_Z) / 2.0)),
-    ("pre-depose", (PLACE_X, GRASP_Y + APPROACH, PLACE_Z)),
-    ("depose",    (PLACE_X, GRASP_Y, PLACE_Z)),
-    ("degage",    (PLACE_X, GRASP_Y + APPROACH, PLACE_Z)),
-]
+mx, mz = (PICK_X + PLACE_X) / 2.0, (PICK_Z + PLACE_Z) / 2.0
 
 q_rest = [0.0] * 6
-configs, q = {}, q_rest
-solved = {}                                       # cache par cible (levee==approche, etc.)
-t_ik = time.time()
-print("--- IK 6 DOF (position + orientation main) ---")
-ok = True
-for nom, tgt in targets:
-    key = tuple(round(c) for c in tgt)
-    if key in solved:
-        q, rp, ro = solved[key]
-    else:
-        q, rp, ro = ik_multi(tgt, q)
-        solved[key] = (q, rp, ro)
-    configs[nom] = q
-    flag = "OK " if (rp < 25 and ro < 18) else "~~ "
-    if rp >= 25 or ro >= 18:
-        ok = False
-    print(f"  {flag}{nom:10s} cible ({tgt[0]:5.0f},{tgt[1]:5.0f},{tgt[2]:5.0f})  "
-          f"pos {rp:5.1f} mm  main {ro:4.1f} deg")
-print(f"  (IK calculee en {time.time() - t_ik:.1f} s)")
+rest_pos = eff_pos(fk_pose(q_rest))      # main au repos (devant le bassin)
+zc = rest_pos[2]                         # Z cote corps, en-deca du bord de table
+
+# chemin de l'effecteur : (label, position monde, evenement)
+PATH = [
+    ("montee",     (PICK_X, HOME_Y, zc),                 None),     # monter cote corps
+    ("survol_pick",(PICK_X, HOME_Y, PICK_Z),             None),     # franchir par le haut
+    ("approche",   (PICK_X, GRASP_Y + APPROACH, PICK_Z), None),     # descente
+    ("saisie",     (PICK_X, GRASP_Y, PICK_Z),            "grab"),
+    ("levee",      (PICK_X, HOME_Y, PICK_Z),             None),     # remontee verticale
+    ("transfert",  (mx, HOME_Y, mz),                     "snap2"),  # transit en hauteur
+    ("pre_depose", (PLACE_X, HOME_Y, PLACE_Z),           None),
+    ("depose",     (PLACE_X, GRASP_Y, PLACE_Z),          "release"),  # descente verticale
+    ("degage",     (PLACE_X, HOME_Y, PLACE_Z),           None),     # remontee verticale
+    ("survol_back",(PLACE_X, HOME_Y, zc),                None),     # franchir au retour
+    ("repos",      rest_pos,                             None),     # revenir au repos
+]
 
 SNAP = "--snap" in sys.argv
 SNAPDIR = r"D:\PRBE_Homme_Robot\PRBE-Homme-Robot\scripts\_debug_reperes"
@@ -357,38 +345,47 @@ def snap(name):
         RDK.Command("Snapshot", SNAPDIR + "\\" + name + ".png")
 
 
-print("--- Animation ---")
+def cart_seg(p_from, p_to, q, steps=STEPS):
+    """Anime l'effecteur en LIGNE DROITE p_from -> p_to (ease-in-out), en
+    resolvant l'IK a chaque pas (warm-start = rapide). Calcul et rendu
+    entrelaces : le bras bouge tout de suite, pas d'attente prealable."""
+    for s in range(1, steps + 1):
+        t = s / steps
+        t = t * t * (3 - 2 * t)
+        tgt = [p_from[i] + (p_to[i] - p_from[i]) * t for i in range(3)]
+        q, _, _ = ik(tgt, q, iters=60, patience=8)
+        applique(q)
+        RDK.Render(True)
+        time.sleep(DT)
+    return q
+
+
+print("--- Animation (chemin cartesien, anti-collision table) ---")
 station = RDK.ActiveStation()
 wrist = F[ARM[-1][0]]
-# demo propre : masquer les reperes du rig (--frames pour les garder)
-# NB : le 2e parametre (visible_frame) est requis pour les items frame
-if "--frames" not in sys.argv:
+if "--frames" not in sys.argv:                # demo propre : cacher les reperes
     for fr in RDK.ItemList(ITEM_TYPE_FRAME):
         fr.setVisible(False, False)
-# remettre la piece au depart (re-run propre)
-piece.setParentStatic(station)
+piece.setParentStatic(station)                # remettre la piece au depart
 piece.setPose(transl(PICK_X, cube_y, PICK_Z))
 applique(q_rest)
 RDK.Render(True)
-time.sleep(0.4)
+time.sleep(0.3)
 
-anime(q_rest, configs["approche"])
-anime(configs["approche"], configs["saisie"])
-piece.setParentStatic(wrist)                  # saisie : la piece suit la main
-print("  piece saisie")
-snap("tache_1_saisie")
-anime(configs["saisie"], configs["levee"])
-anime(configs["levee"], configs["transfert"])
-snap("tache_2_transfert")
-anime(configs["transfert"], configs["pre-depose"])
-anime(configs["pre-depose"], configs["depose"])
-piece.setParentStatic(station)                # lacher
-# snap : reposer la piece a plat sur la table, exactement a la cible
-piece.setPose(transl(PLACE_X, cube_y, PLACE_Z))
-print(f"  piece deposee en ({PLACE_X:.0f}, {cube_y:.0f}, {PLACE_Z:.0f})")
-snap("tache_3_depose")
-anime(configs["depose"], configs["degage"])
-anime(configs["degage"], q_rest)
-RDK.Render(True)
+q, cur = q_rest, rest_pos
+for label, pos, event in PATH:
+    q = cart_seg(cur, pos, q)
+    cur = pos
+    if event == "grab":
+        piece.setParentStatic(wrist)          # la piece suit la main
+        print("  piece saisie")
+        snap("tache_1_saisie")
+    elif event == "snap2":
+        snap("tache_2_transfert")
+    elif event == "release":
+        piece.setParentStatic(station)
+        piece.setPose(transl(PLACE_X, cube_y, PLACE_Z))   # posee a plat, a la cible
+        print(f"  piece deposee en ({PLACE_X:.0f}, {cube_y:.0f}, {PLACE_Z:.0f})")
+        snap("tache_3_depose")
 snap("tache_4_final")
-print("Fini — piece deplacee de gauche a droite.")
+print("Fini — piece deplacee de gauche a droite, sans toucher la table.")
