@@ -67,7 +67,9 @@ ARM = [
     ("shoulderL_abduction", "z", -90, 135),
     ("shoulderL_flexion",   "x", -120, 90),   # flexion humaine reelle : 180
     ("shoulderL_rotation",  "y", -45, 180),
-    ("elbowL_flexion",      "x",   0, 145),
+    ("elbowL_flexion",      "x", -145, 0),    # NEGATIF = plier vers l'AVANT
+                                              # (le sens anatomique sur ce rig
+                                              # — demande Niko 10/06 soir)
     ("wristL_flexion",      "x", -50, 60),
     ("wristL_deviation",    "z", -30, 20),
 ]
@@ -77,7 +79,7 @@ ROT = {"x": rotx, "y": roty, "z": rotz}
 # Flexion epaule jusqu'a -120 (30 deg au-dessus de l'horizontale) : sans
 # ca, lever la main pres du corps pour franchir le bord de table est
 # inatteignable et l'IK se contorsionne.
-LIM_SCEN = [(-45, 60), (-120, 20), (-45, 45), (0, 130), (-40, 50), (-25, 20)]
+LIM_SCEN = [(-45, 60), (-120, 20), (-45, 45), (-130, 0), (-40, 50), (-25, 20)]
 
 # ORIENTATION DE LA MAIN — c'est le coeur du fix : l'IK position seule
 # laissait la paume dans une orientation quelconque (de travers, doigts en
@@ -109,13 +111,13 @@ LAM = 5.0           # amortissement DLS (petit : sinon sur-amorti = pas de
 # les moindres carres amortis (poids WQ << tache principale) : elle
 # selectionne la branche naturelle (epaule ecartee a gauche, coude mi-plie,
 # poignet neutre) et eloigne des butees, sans voler la cible a l'IK.
-Q_CONF = [30.0, -60.0, 30.0, 50.0, 10.0, 0.0]
+Q_CONF = [30.0, -60.0, 30.0, -50.0, 10.0, 0.0]
 # Posture "main pres du corps" pour MONTER/DESCENDRE le long du corps :
 # coude bien PLIE (le geste humain : on remonte la main pres de la poitrine
 # puis on etend le bras). Sans ce guide, l'IK reste sur la branche coude
 # mi-plie / epaule vrillee -> coude qui semble se plier a l'envers + blocage
 # au franchissement du bord de table.
-Q_FOLD = [25.0, -95.0, 35.0, 105.0, -10.0, 0.0]
+Q_FOLD = [25.0, -95.0, 35.0, -105.0, -10.0, 0.0]
 WQ = 1.2            # poids posture (via WQ^2) — assez pour departager les
                     # branches, assez faible pour ~2 mm de biais a l'equilibre
 
@@ -348,8 +350,8 @@ def ik_multi(tpos, q0):
     bq, bp, bo = ik(tpos, q0)
     if bp < 12:                                    # contact atteint -> fini
         return bq, bp, bo
-    for s in ([45, -85, 45, 40, 35, 5],           # bras leve au-dessus de la table
-              [30, -60, 30, 50, 10, 0]):          # prehension naturelle
+    for s in ([45, -85, 45, -40, 35, 5],          # bras leve au-dessus de la table
+              [30, -60, 30, -50, 10, 0]):         # prehension naturelle
         q, rp, ro = ik(tpos, s)
         if score(rp, ro) < score(bp, bo):
             bq, bp, bo = q, rp, ro
@@ -403,16 +405,25 @@ P_PLACE = (PLACE_X, GRASP_Y, PLACE_Z)
 #   - poignet flechi ~50 deg en franchissant le bord (doigts recourbes
 #     vers l'avant -> extension verticale reduite, ca passe au-dessus du
 #     plateau ; verifie par collision MESH RoboDK, pas par approximation).
+# Clefs trouvees par scan FK systematique (_scan_fk.py), coude NEGATIF
+# (= plie vers l'avant, sens anatomique) : la main monte DEVANT le corps
+# coude plie, epaule basse (-10/-40 deg de flexion seulement — fini
+# l'aile de poulet), puis le bras s'ouvre vers la piece.
+# Pendant le pli du coude (-45/-60), l'arc de l'avant-bras balaie vers
+# l'AVANT (axes du rig) — comme un humain colle a une table, on tire donc
+# l'EPAULE LEGEREMENT EN ARRIERE (flexion +10/+15) le temps du pli, puis
+# la main monte devant la poitrine et le bras s'ouvre vers la piece.
+# Clefs trouvees par scan FK (_scan_fk) + bancs bbox/vue de cote
+# (_probe_bbox), coude NEGATIF (= plie vers l'avant, sens anatomique).
 QK_TEND = [
     list(q_rest),                       # garde-a-vous
-    [18, -60, 28, 75, 15, 6],           # la main monte pres du corps
-    [25, -75, 30, 95, 48, 8],           # mi-hauteur, doigts recourbes,
-                                        # main RETRACTEE (Zmax ~210 < face)
-    [28, -98, 20, 110, 45, 10],         # haut, toujours retractee
-                                        # (main Ymin 923 > plateau, bbox mesh)
-    [34, -98, 38, 95, -30, 10],         # s'allonge au-dessus du plateau
-                                        # (poignet passe en extension, Ymin 961)
-    [33, -90, 37, 60, 20, 10],          # pres de la piece, le poignet revient
+    [-15, 10, 30, -35, -10, 3],         # amorce : epaule en arriere,
+                                        # le coude commence a plier (Zmax 87)
+    [-30, 15, 33, -55, -18, 4],         # pli franc, main le long du corps
+    [-38, -10, 32, -78, -22, 5],        # la main monte (paume 933, Zmax 138)
+    [-40, -10, 0, -100, -25, 5],        # devant la poitrine, coude plie,
+                                        # epaule basse (paume 1035, Ymin 970)
+    [-30, -40, 0, -60, 0, 5],           # le bras s'ouvre au-dessus du plateau
 ]
 P_TEND_FIN = eff_pos(fk_pose(QK_TEND[-1]))   # ou la derniere clef pose la main
 
