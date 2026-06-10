@@ -1,0 +1,12 @@
+{
+  "nom": "Slalom en S (demo)",
+  "description": "Waypoints au sol en mm, plan X-Z (Y = hauteur). Le mannequin demarre au 1er point, oriente vers le 2e. X+ = cote gauche du mannequin, +Z = devant.",
+  "points_xz_mm": [
+    [0, 0],
+    [0, 1200],
+    [700, 2600],
+    [-700, 4200],
+    [0, 5600],
+    [0, 6800]
+  ]
+}

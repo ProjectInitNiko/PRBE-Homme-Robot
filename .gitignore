@@ -26,3 +26,23 @@ external/
 # Mannequins générés à la volée hors de examples/
 *.urdf
 !examples/*.urdf
+
+# Captures d'ecran et scripts jetables des sessions de mise au point (locaux)
+examples/*.png
+scripts/*.png
+scripts/_*
+
+# Stations RoboDK et exports 3D locaux (poses non persistees — bug type 7 ;
+# les stations sont deposees sur Teams)
+*.rdk
+examples/*.stl
+Simu ROBODK/
+
+# Scripts de labo v1 (rig abandonne, conserves en local pour reference)
+scripts/Marche_RoboDK.py
+scripts/Moonwalk_RoboDK.py
+scripts/build_operator_v2.py
+scripts/exemple_bouger_humain.py
+scripts/moonwalk_lab.py
+scripts/restore_position_naturelle.py
+scripts/walk_human_robodk.py

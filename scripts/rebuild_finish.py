@@ -7,7 +7,7 @@ from robodk.robolink import Robolink
 from robodk.robomath import Mat
 
 SCRIPTS = r"D:\PRBE_Homme_Robot\PRBE-Homme-Robot\scripts"
-PROGS = ["Mouvement_v2.py", "Marche_Militaire.py", "Marche_Avant.py"]
+PROGS = ["Mouvement_v2.py", "Marche_Militaire.py", "Marche_Avant.py", "Marche_Trajectoire.py"]
 
 RDK = Robolink()
 print("Station :", RDK.ActiveStation().Name())

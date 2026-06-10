@@ -157,11 +157,13 @@ for k in ("Hips", "Torso", "Head"):
         o.setParentStatic(base)
 
 DOF = {}
+JPOS = {}
 for geo_side in ("R", "L"):
     for kind in ("leg", "arm"):
         pf = base
         for jlabel, dofs, parent_seg, segkey in limb(geo_side, kind):
             pos = shoulder_center(segkey) if jlabel.startswith("shoulder") else joint_center(parent_seg, segkey)
+            JPOS[jlabel] = pos
             print(f"  {jlabel:11s} @ ({pos[0]:6.0f},{pos[1]:6.0f},{pos[2]:6.0f})")
             last = pf
             for (dofname, axis, lim) in dofs:
@@ -189,6 +191,17 @@ for fr in RDK.ItemList(ITEM_TYPE_FRAME):
 # (le bras du cote X+ est ecarte d'environ 42 deg dans la pose STEP d'origine)
 sho_xplus = DOF[f"shoulder{user_side('R')}_abduction"]["frame"]
 sho_xplus.setPose(sho_xplus.Pose() * rotz(math.radians(-42.0)))
+
+# + rapprocher les pieds : cheville ramenee a l'aplomb de la hanche (la pose
+# STEP a les jambes ecartees de ~8-11 deg) ; pied contre-tourne pour rester a plat
+for u in ("R", "L"):
+    hp, ap = JPOS[f"hip{u}"], JPOS[f"ankle{u}"]
+    ang = math.atan2(ap[0] - hp[0], hp[1] - ap[1])
+    hip_fr = DOF[f"hip{u}_abduction"]["frame"]
+    ank_fr = DOF[f"ankle{u}_flexion"]["frame"]
+    hip_fr.setPose(hip_fr.Pose() * rotz(-ang))
+    ank_fr.setPose(ank_fr.Pose() * rotz(ang))
+    print(f"  jambes resserrees ({u}) : {math.degrees(ang):+.1f} deg")
 
 # --- 9) embarquer le programme de pilotage ---
 if "Mouvement_v2" not in [p.Name() for p in RDK.ItemList(10)]:
