@@ -46,7 +46,9 @@ from robodk.robomath import Mat, transl, rotx, roty, rotz, invH
 TABLE_TOP = 900          # hauteur de la surface de la table
 TABLE_SX, TABLE_SZ = 1100, 550   # plateau : largeur (X) x profondeur (Z)
 TABLE_TH = 40            # epaisseur plateau
-TABLE_CZ = 455           # centre du plateau devant le mannequin (Z)
+TABLE_CZ = 485           # centre du plateau devant le mannequin (Z).
+                         # 485 et pas 455 : a 455 la face avant (Z=180) touche
+                         # la main au garde-a-vous (collision mesh au repos).
 CUBE = 80                # arete de la piece cubique
 PICK_X, PICK_Z = 330, 400        # piece au depart : a GAUCHE (X+)
 PLACE_X, PLACE_Z = 80, 400       # depose : 25 cm vers la DROITE (rester
@@ -390,23 +392,29 @@ P_PLACE = (PLACE_X, GRASP_Y, PLACE_Z)
 
 # --- phase "tendre" en ESPACE ARTICULAIRE --------------------------------
 # Suivre une cible cartesienne pendant que le bras se reconfigure en grand
-# (bras pendant -> plie pres du corps -> etendu au-dessus de la table) fait
-# balayer la main n'importe ou en chemin (y compris a travers la table) :
-# l'IK instantanee et la pose appliquee (vitesse bornee) divergent. Pour ce
-# geste a main vide on interpole donc entre des POSTURES CLES — le geste
-# balistique humain : repos -> main pliee pres de la poitrine ->
-# franchissement du bord -> au-dessus de la piece. Les postures sont
-# RESOLUES une fois ici, le chemin interpole est verifie par _diag.
-TEND_PTS = [(225, 1005, 125), (290, 1050, 170), (315, 1065, 260),
-            (PICK_X, HI, PICK_Z)]
-QK_TEND = [list(q_rest)]
-_qk = list(Q_FOLD)                      # seed plie : selectionne la bonne branche
-for _p in TEND_PTS:
-    _qk, _rp, _ro = ik(list(_p), _qk, iters=300, patience=40,
-                       wo=WO_LIBRE, qconf=Q_FOLD)
-    QK_TEND.append(list(_qk))
-    print(f"  clef tendre ({_p[0]:.0f},{_p[1]:.0f},{_p[2]:.0f}) : "
-          f"res {_rp:.1f} mm / {_ro:.1f} deg")
+# (bras pendant -> etendu au-dessus de la table) fait balayer la main
+# n'importe ou en chemin : l'IK instantanee et la pose appliquee (vitesse
+# bornee) divergent. Pour ce geste a main vide on interpole donc entre des
+# POSTURES CLES choisies A LA MAIN (FK pure, banc d'essai _probe_poses,
+# validees visuellement en vue de cote par snapshots) :
+#   - coude <= 100 deg et main DEVANT le coude (l'IK seule produisait des
+#     clefs coude 120-130 / epaule levee = "aile de poulet", defaut releve
+#     par Niko en vue de cote) ;
+#   - poignet flechi ~50 deg en franchissant le bord (doigts recourbes
+#     vers l'avant -> extension verticale reduite, ca passe au-dessus du
+#     plateau ; verifie par collision MESH RoboDK, pas par approximation).
+QK_TEND = [
+    list(q_rest),                       # garde-a-vous
+    [18, -60, 28, 75, 15, 6],           # la main monte pres du corps
+    [25, -75, 30, 95, 48, 8],           # mi-hauteur, doigts recourbes,
+                                        # main RETRACTEE (Zmax ~210 < face)
+    [28, -98, 20, 110, 45, 10],         # haut, toujours retractee
+                                        # (main Ymin 923 > plateau, bbox mesh)
+    [34, -98, 38, 95, -30, 10],         # s'allonge au-dessus du plateau
+                                        # (poignet passe en extension, Ymin 961)
+    [33, -90, 37, 60, 20, 10],          # pres de la piece, le poignet revient
+]
+P_TEND_FIN = eff_pos(fk_pose(QK_TEND[-1]))   # ou la derniere clef pose la main
 
 # Franchissement du bord de table (face avant a Z=180) : on MONTE d'abord
 # pres du corps coude PLIE, et on ne pousse vers l'avant qu'une fois la
@@ -416,8 +424,8 @@ for _p in TEND_PTS:
 #   mode "cart"  : donnees = via-points cartesiens (IK par pas)
 PHASES = [
     ("tendre", "joint", QK_TEND, WO_LIBRE, Q_FOLD, 40, 0.0, None),
-    ("saisir", "cart",                               # descente verticale, lente
-     [(PICK_X, HI, PICK_Z), (PICK_X, GRASP_Y + 25, PICK_Z), P_GRASP],
+    ("saisir", "cart",                               # glisse sur la piece, lent
+     [P_TEND_FIN, (PICK_X, GRASP_Y + 18, PICK_Z + 8), P_GRASP],
      WO, Q_CONF, 14, 0.35, "grab"),
     ("transporter", "cart",                          # arc au-dessus de la table
      [P_GRASP, (PICK_X, HI, PICK_Z), ((PICK_X + PLACE_X) / 2.0, HI + 5, PICK_Z),
