@@ -20,9 +20,14 @@ pose EST persistee dans le .rdk — pas de bug type 7).
 Cinematique : bras gauche = 6 DDL (epaule abduction Z / flexion X /
 rotation Y, coude flexion X, poignet flexion X / deviation Z), memes
 conventions que Mouvement_v2 (pose = REST x rot(axe, angle), limites
-humaines). L'effecteur = centre de la paume (bbox de la main au repos).
-IK numerique : moindres carres amortis (Jacobien par differences finies),
-position seule, limites respectees par clamp.
+humaines). L'effecteur = centre de la main (bbox au repos).
+
+IK numerique 6 DOF : position ET orientation (DLS amortie, Jacobien 6x6
+par differences finies, limites par clamp, multi-start). L'orientation de
+la main est CONTRAINTE (sinon la paume part de travers / poignet a
+l'envers) : on la maintient verticale, doigts vers le bas, comme au repos.
+Le bras n'a pas de pronation d'avant-bras, donc "paume a plat" est evite
+(il tordrait le bras) ; le poids WO equilibre position vs orientation.
 
 Convention station : X+ = cote GAUCHE du mannequin, +Z = devant, Y = haut.
 """
@@ -44,8 +49,8 @@ PICK_X, PICK_Z = 330, 400        # piece au depart : a GAUCHE (X+)
 PLACE_X, PLACE_Z = 80, 400       # depose : 25 cm vers la DROITE (rester
                                  # anatomique : pas de traversee complete
                                  # du corps avec le bras gauche)
-PALM = 55                # distance paume <-> centre du cube a la saisie
-APPROACH = 50            # hauteur d'approche au-dessus du cube
+GRASP_CLEAR = 35         # centre de la main au-dessus du haut du cube (saisie)
+APPROACH = 45            # hauteur d'approche / de levee (le cube degage la table)
 STEPS = 18               # pas d'interpolation par phase
 DT = 0.025               # tempo animation (s)
 
@@ -60,14 +65,31 @@ ARM = [
 ]
 ROT = {"x": rotx, "y": roty, "z": rotz}
 
-# posture naturelle pour CE scenario (saisie sur table) : l'IK position
-# seule part en contorsions (coude au ciel, paume vers le haut, poignet en
-# butee) si on la laisse libre -> 3 garde-fous :
-LIM_SCEN = [(-45, 60), (-90, 20), (-30, 30), (0, 120), (-25, 25), (-15, 15)]
-W = [1.0, 1.0, 0.4, 1.0, 0.3, 0.3]          # cout de mouvement (poignet cher)
-Q_NAT = [10, -45, 0, 50, 0, 0]              # posture de reference (biais)
-K_NAT = 0.002                               # rappel postural (doux !)
-NAT_ZONE = 25.0                             # rappel actif seulement pres de la cible (mm)
+# bornes du scenario (incluses dans les limites humaines)
+LIM_SCEN = [(-45, 60), (-90, 20), (-45, 45), (0, 130), (-40, 50), (-25, 20)]
+
+# ORIENTATION DE LA MAIN — c'est le coeur du fix : l'IK position seule
+# laissait la paume dans une orientation quelconque (de travers, doigts en
+# l'air = "poignet a l'envers"). On contraint maintenant l'orientation du
+# repere POIGNET.
+# Geometrie mesuree (_diag_main_geom) dans le repere poignet au repos :
+#   - doigts le long de  -Y_local
+#   - normale de paume le long de  Z_local  (axe le plus fin)
+# Le bras n'a PAS de pronation d'avant-bras (poignet = flexion + deviation
+# seulement) : imposer "paume a plat vers le bas" le tord et degrade la
+# position. On garde donc la main dans son ORIENTATION DE REPOS — verticale,
+# doigts vers le bas (-Y monde), paume vers l'avant (+Z monde) — qui est
+# naturelle, atteignable, et empeche tout retournement du poignet.
+# Cible = orientation identite du repere poignet (= sa pose au repos).
+R_GRASP = Mat([[1.0, 0.0, 0.0, 0.0],
+               [0.0, 1.0, 0.0, 0.0],
+               [0.0, 0.0, 1.0, 0.0],
+               [0.0, 0.0, 0.0, 1.0]])
+WO = 65.0           # poids de l'orientation (mm equivalents par radian) :
+                    # assez pour tenir la main droite, pas trop pour ne pas
+                    # voler la position au bras
+LAM = 5.0           # amortissement DLS (petit : sinon sur-amorti = pas de
+                    # convergence ; remonte pres des singularites via clamp)
 
 RDK = Robolink()
 print("Station :", RDK.ActiveStation().Name())
@@ -141,14 +163,41 @@ E_LOCAL = (e[0][3], e[1][3], e[2][3])
 print(f"Effecteur (paume) au repos : ({hand0[0]:.0f}, {hand0[1]:.0f}, {hand0[2]:.0f})")
 
 
-def fk(q):
-    """Position absolue de la paume pour les 6 angles q (deg)."""
+def fk_pose(q):
+    """Pose absolue (Mat 4x4) du repere POIGNET pour les 6 angles q (deg).
+    L'orientation de ce repere = orientation de la main (rigide)."""
     P = ROOT
     for (nom, axe, lo, hi), a in zip(ARM, q):
         P = P * REST[nom] * ROT[axe](math.radians(a))
-    P = P * transl(*E_LOCAL)
-    r = P.rows
+    return P
+
+
+def eff_pos(P):
+    """Position monde de l'effecteur (centre paume) depuis la pose poignet."""
+    r = (P * transl(*E_LOCAL)).rows
     return [r[0][3], r[1][3], r[2][3]]
+
+
+def cols(M):
+    r = M.rows
+    return [[r[0][c], r[1][c], r[2][c]] for c in range(3)]
+
+
+def cross(a, b):
+    return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]
+
+
+def ori_err(Rc, Rd):
+    """Erreur d'orientation (vecteur monde, ~rad) menant Rc -> Rd.
+    Formule de Siciliano : 0.5 * somme(col_c x col_d)."""
+    e = [0.0, 0.0, 0.0]
+    for k in range(3):
+        c = cross(Rc[k], Rd[k])
+        e = [e[i] + c[i] for i in range(3)]
+    return [0.5 * v for v in e]
+
+
+RG = cols(R_GRASP)
 
 
 def clamp(q):
@@ -156,64 +205,85 @@ def clamp(q):
     return [max(lo, min(hi, a)) for (lo, hi), a in zip(LIM_SCEN, q)]
 
 
-def ik(target, q0, tol=8.0, iters=200):
-    """Moindres carres amortis PONDERES vers `target` (position, mm),
-    avec rappel postural vers Q_NAT. Retourne (q, residu)."""
+def _solve6(A, b):
+    """Resout A y = b (6x6) par elimination de Gauss avec pivot partiel."""
+    n = 6
+    M = [row[:] + [b[i]] for i, row in enumerate(A)]
+    for c in range(n):
+        p = max(range(c, n), key=lambda r: abs(M[r][c]))
+        M[c], M[p] = M[p], M[c]
+        piv = M[c][c]
+        if abs(piv) < 1e-12:
+            continue
+        for r in range(n):
+            if r != c and M[r][c]:
+                f = M[r][c] / piv
+                M[r] = [M[r][k] - f * M[c][k] for k in range(n + 1)]
+    return [M[i][n] / M[i][i] if abs(M[i][i]) > 1e-12 else 0.0 for i in range(n)]
+
+
+def ik(tpos, q0, tol_p=6.0, tol_o=0.05, iters=500):
+    """IK 6 DOF position + orientation (paume vers le bas), DLS amortie.
+    Retourne (q, residu_pos_mm, residu_ori_deg)."""
     q = clamp(list(q0))
-    lam2 = 25.0 ** 2                     # amortissement (mm^2)
     for _ in range(iters):
-        p = fk(q)
-        err = [target[i] - p[i] for i in range(3)]
-        n = math.sqrt(sum(e * e for e in err))
-        if n < tol:
-            return q, n
-        # Jacobien 3x6 par differences finies
-        J = [[0.0] * 6 for _ in range(3)]
+        P = fk_pose(q)
+        p = eff_pos(P)
+        Rc = cols(P)
+        ep = [tpos[i] - p[i] for i in range(3)]
+        eo = ori_err(Rc, RG)
+        np_ = math.sqrt(sum(v*v for v in ep))
+        no_ = math.sqrt(sum(v*v for v in eo))
+        if np_ < tol_p and no_ < tol_o:
+            return q, np_, math.degrees(no_)
+        x = ep + [WO * v for v in eo]            # tache 6D (pos mm ; ori ponderee)
+        # Jacobien 6x6 par differences finies (lignes 0-2 position, 3-5 orient)
+        J = [[0.0] * 6 for _ in range(6)]
         for j in range(6):
             dq = list(q)
             dq[j] += 0.5
-            pj = fk(dq)
+            Pj = fk_pose(dq)
+            pj = eff_pos(Pj)
+            dphi = ori_err(Rc, cols(Pj))         # petite rotation Rc -> Rj
             for i in range(3):
                 J[i][j] = (pj[i] - p[i]) / 0.5
-        # dq = W^2 J^T (J W^2 J^T + lam I)^-1 err  (poids = cout par DDL)
-        JJT = [[sum(W[k] * W[k] * J[i][k] * J[r][k] for k in range(6))
-                + (lam2 if i == r else 0) for r in range(3)] for i in range(3)]
-        # inversion 3x3 (Cramer)
-        a, b, c = JJT[0]; d, e2, f = JJT[1]; g, h, i2 = JJT[2]
-        det = a*(e2*i2-f*h) - b*(d*i2-f*g) + c*(d*h-e2*g)
-        inv = [[(e2*i2-f*h)/det, (c*h-b*i2)/det, (b*f-c*e2)/det],
-               [(f*g-d*i2)/det, (a*i2-c*g)/det, (c*d-a*f)/det],
-               [(d*h-e2*g)/det, (b*g-a*h)/det, (a*e2-b*d)/det]]
-        v = [sum(inv[i][k] * err[k] for k in range(3)) for i in range(3)]
+                J[3 + i][j] = WO * dphi[i] / 0.5
+        # DLS : dq = J^T (J J^T + lam^2 I)^-1 x
+        JJT = [[sum(J[i][k] * J[r][k] for k in range(6)) + (LAM * LAM if i == r else 0)
+                for r in range(6)] for i in range(6)]
+        y = _solve6(JJT, x)
         for j in range(6):
-            q[j] += W[j] * W[j] * sum(J[i][j] * v[i] for i in range(3))
-            if n < NAT_ZONE:                     # rappel postural doux,
-                q[j] += K_NAT * (Q_NAT[j] - q[j])  # seulement pres du but
+            q[j] += sum(J[i][j] * y[i] for i in range(6))
         q = clamp(q)
-    p = fk(q)
-    return q, math.sqrt(sum((target[i] - p[i]) ** 2 for i in range(3)))
+    P = fk_pose(q)
+    ep = [tpos[i] - eff_pos(P)[i] for i in range(3)]
+    no_ = math.sqrt(sum(v*v for v in ori_err(cols(P), RG)))
+    return q, math.sqrt(sum(v*v for v in ep)), math.degrees(no_)
 
 
-def ik_multi(target, q0, tol=8.0):
-    """IK avec multi-start : warm-start d'abord, sinon seeds varies
-    (minima locaux frequents avec le coude borne 0-145)."""
+def ik_multi(tpos, q0):
+    """Multi-start : warm-start puis seeds varies (minima locaux frequents
+    avec l'orientation contrainte). Score = pos + 3 mm/deg d'orientation."""
     import random
-    rng = random.Random(0)               # reproductible
-    best_q, best_r = ik(target, q0, tol)
-    if best_r < 30:
-        return best_q, best_r
-    seeds = [list(Q_NAT),
-             [0.0] * 6,
-             [20, -60, 0, 80, 0, 0],     # bras devant, coude bien plie
-             [-20, -70, 0, 40, 0, 0]]    # bras tendu devant-bas
-    seeds += [[rng.uniform(lo, hi) for lo, hi in LIM_SCEN] for _ in range(5)]
+    rng = random.Random(0)
+    def score(r):
+        return r[0] + 3.0 * r[1]
+    best = ik(tpos, q0)
+    if score((best[1], best[2])) < 20:
+        return best
+    seeds = [[20, -55, 10, 80, -10, 0],     # bras devant, coude plie, paume bas
+             [0, -45, 20, 60, 0, 0],
+             [-15, -65, 25, 50, -15, 0],
+             [0.0] * 6]
+    seeds += [[rng.uniform(lo, hi) for lo, hi in LIM_SCEN] for _ in range(6)]
+    bq, bp, bo = best
     for s in seeds:
-        q, r = ik(target, s, tol)
-        if r < best_r:
-            best_q, best_r = q, r
-        if best_r < tol:
+        q, rp, ro = ik(tpos, s)
+        if score((rp, ro)) < score((bp, bo)):
+            bq, bp, bo = q, rp, ro
+        if score((bp, bo)) < 10:
             break
-    return best_q, best_r
+    return bq, bp, bo
 
 
 def applique(q):
@@ -231,8 +301,11 @@ def anime(q_from, q_to, steps=STEPS):
 
 
 # ---------------- choregraphie ----------------
-cube_y = TABLE_TOP + CUBE / 2.0
-GRASP_Y = cube_y + CUBE / 2.0 + PALM - 35    # paume qui coiffe le cube
+# l'effecteur est le CENTRE de la main ; paume vers le bas, la main coiffe
+# le cube -> on vise au-dessus du haut du cube.
+cube_y = TABLE_TOP + CUBE / 2.0          # centre du cube
+cube_top = cube_y + CUBE / 2.0           # haut du cube
+GRASP_Y = cube_top + GRASP_CLEAR         # centre main quand elle tient le cube
 targets = [
     ("approche",  (PICK_X, GRASP_Y + APPROACH, PICK_Z)),
     ("saisie",    (PICK_X, GRASP_Y, PICK_Z)),
@@ -245,20 +318,18 @@ targets = [
 
 q_rest = [0.0] * 6
 configs, q = {}, q_rest
-CRITIQUES = {"saisie": 30, "depose": 30}     # seuil serre au contact,
-SEUIL_TRANSIT = 50                            # tolerant en transit (en vol)
-print("--- IK ---")
+print("--- IK 6 DOF (position + paume vers le bas) ---")
 ok = True
 for nom, tgt in targets:
-    q, res = ik_multi(tgt, q)
+    q, rp, ro = ik_multi(tgt, q)
     configs[nom] = q
-    seuil = CRITIQUES.get(nom, SEUIL_TRANSIT)
-    flag = "OK " if res < seuil else "!! "
-    if res >= seuil:
+    flag = "OK " if (rp < 25 and ro < 12) else "!! "
+    if rp >= 25 or ro >= 12:
         ok = False
-    print(f"  {flag}{nom:10s} cible ({tgt[0]:5.0f},{tgt[1]:5.0f},{tgt[2]:5.0f})  residu {res:5.1f} mm")
+    print(f"  {flag}{nom:10s} cible ({tgt[0]:5.0f},{tgt[1]:5.0f},{tgt[2]:5.0f})  "
+          f"pos {rp:5.1f} mm  paume {ro:4.1f} deg")
 if not ok:
-    print("!! residus hors seuil — scene peut-etre hors d'atteinte, ajuster les parametres")
+    print("!! residus hors seuil — verifier l'atteignabilite / l'orientation")
 
 SNAP = "--snap" in sys.argv
 SNAPDIR = r"D:\PRBE_Homme_Robot\PRBE-Homme-Robot\scripts\_debug_reperes"
