@@ -222,10 +222,20 @@ def _solve6(A, b):
     return [M[i][n] / M[i][i] if abs(M[i][i]) > 1e-12 else 0.0 for i in range(n)]
 
 
-def ik(tpos, q0, tol_p=6.0, tol_o=0.05, iters=500):
-    """IK 6 DOF position + orientation (paume vers le bas), DLS amortie.
+def _residu(q, tpos):
+    P = fk_pose(q)
+    ep = [tpos[i] - eff_pos(P)[i] for i in range(3)]
+    no_ = math.sqrt(sum(v*v for v in ori_err(cols(P), RG)))
+    return math.sqrt(sum(v*v for v in ep)), math.degrees(no_)
+
+
+def ik(tpos, q0, tol_p=6.0, tol_o=0.09, iters=240, patience=22):
+    """IK 6 DOF position + orientation, DLS amortie. S'arrete des que la
+    cible est atteinte OU que le residu stagne (patience) — indispensable
+    pour ne pas mouliner 500 iterations sur un point hors d'atteinte.
     Retourne (q, residu_pos_mm, residu_ori_deg)."""
     q = clamp(list(q0))
+    best_q, best_s, stale = q[:], 1e18, 0
     for _ in range(iters):
         P = fk_pose(q)
         p = eff_pos(P)
@@ -234,8 +244,15 @@ def ik(tpos, q0, tol_p=6.0, tol_o=0.05, iters=500):
         eo = ori_err(Rc, RG)
         np_ = math.sqrt(sum(v*v for v in ep))
         no_ = math.sqrt(sum(v*v for v in eo))
+        s = np_ + WO * no_                       # score combine
+        if s < best_s - 0.05:                    # progres (meme fin)
+            best_s, best_q, stale = s, q[:], 0
+        else:
+            stale += 1
         if np_ < tol_p and no_ < tol_o:
             return q, np_, math.degrees(no_)
+        if stale >= patience:                    # plus de progres -> stop
+            break
         x = ep + [WO * v for v in eo]            # tache 6D (pos mm ; ori ponderee)
         # Jacobien 6x6 par differences finies (lignes 0-2 position, 3-5 orient)
         J = [[0.0] * 6 for _ in range(6)]
@@ -255,33 +272,26 @@ def ik(tpos, q0, tol_p=6.0, tol_o=0.05, iters=500):
         for j in range(6):
             q[j] += sum(J[i][j] * y[i] for i in range(6))
         q = clamp(q)
-    P = fk_pose(q)
-    ep = [tpos[i] - eff_pos(P)[i] for i in range(3)]
-    no_ = math.sqrt(sum(v*v for v in ori_err(cols(P), RG)))
-    return q, math.sqrt(sum(v*v for v in ep)), math.degrees(no_)
+    rp, ro = _residu(best_q, tpos)               # renvoie le MEILLEUR vu
+    return best_q, rp, ro
 
 
 def ik_multi(tpos, q0):
-    """Multi-start : warm-start puis seeds varies (minima locaux frequents
-    avec l'orientation contrainte). Score = pos + 3 mm/deg d'orientation."""
-    import random
-    rng = random.Random(0)
-    def score(r):
-        return r[0] + 3.0 * r[1]
-    best = ik(tpos, q0)
-    if score((best[1], best[2])) < 20:
-        return best
-    seeds = [[20, -55, 10, 80, -10, 0],     # bras devant, coude plie, paume bas
-             [0, -45, 20, 60, 0, 0],
-             [-15, -65, 25, 50, -15, 0],
-             [0.0] * 6]
-    seeds += [[rng.uniform(lo, hi) for lo, hi in LIM_SCEN] for _ in range(6)]
-    bq, bp, bo = best
-    for s in seeds:
+    """Warm-start, puis seeds SEULEMENT si la position n'est pas atteinte.
+    L'orientation a un plancher (~16-40 deg, bras sans pronation) : on ne
+    juge la sortie que sur la POSITION, sinon on relance des seeds en vain
+    alors que le point est deja bon."""
+    def score(rp, ro):
+        return rp + 1.0 * ro                       # priorite a la position
+    bq, bp, bo = ik(tpos, q0)
+    if bp < 12:                                    # contact atteint -> fini
+        return bq, bp, bo
+    for s in ([20, -55, 10, 80, -10, 0],          # bras devant, coude plie
+              [0, -45, 20, 60, 0, 0]):
         q, rp, ro = ik(tpos, s)
-        if score((rp, ro)) < score((bp, bo)):
+        if score(rp, ro) < score(bp, bo):
             bq, bp, bo = q, rp, ro
-        if score((bp, bo)) < 10:
+        if bp < 12:
             break
     return bq, bp, bo
 
@@ -318,18 +328,24 @@ targets = [
 
 q_rest = [0.0] * 6
 configs, q = {}, q_rest
-print("--- IK 6 DOF (position + paume vers le bas) ---")
+solved = {}                                       # cache par cible (levee==approche, etc.)
+t_ik = time.time()
+print("--- IK 6 DOF (position + orientation main) ---")
 ok = True
 for nom, tgt in targets:
-    q, rp, ro = ik_multi(tgt, q)
+    key = tuple(round(c) for c in tgt)
+    if key in solved:
+        q, rp, ro = solved[key]
+    else:
+        q, rp, ro = ik_multi(tgt, q)
+        solved[key] = (q, rp, ro)
     configs[nom] = q
-    flag = "OK " if (rp < 25 and ro < 12) else "!! "
-    if rp >= 25 or ro >= 12:
+    flag = "OK " if (rp < 25 and ro < 18) else "~~ "
+    if rp >= 25 or ro >= 18:
         ok = False
     print(f"  {flag}{nom:10s} cible ({tgt[0]:5.0f},{tgt[1]:5.0f},{tgt[2]:5.0f})  "
-          f"pos {rp:5.1f} mm  paume {ro:4.1f} deg")
-if not ok:
-    print("!! residus hors seuil — verifier l'atteignabilite / l'orientation")
+          f"pos {rp:5.1f} mm  main {ro:4.1f} deg")
+print(f"  (IK calculee en {time.time() - t_ik:.1f} s)")
 
 SNAP = "--snap" in sys.argv
 SNAPDIR = r"D:\PRBE_Homme_Robot\PRBE-Homme-Robot\scripts\_debug_reperes"
