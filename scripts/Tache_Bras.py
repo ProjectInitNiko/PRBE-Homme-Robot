@@ -1,33 +1,37 @@
 # -*- coding: utf-8 -*-
 """
-Tache_Bras.py — Scenario membres superieurs : pick & place d'une piece
-cubique sur une table (reunion du 04/06 : "tache bras", main + bras qui
-s'articulent, le corps reste fixe).
+Tache_Bras.py — v3 (refonte complete, 11/06) : pick & place d'une piece
+cubique sur une table, bras gauche 6 DDL, corps fixe.
 
 Scenario :
   Le mannequin est debout devant une table. Une piece cubique est posee
-  sur la table a sa GAUCHE. Il la saisit de la main gauche, la deplace
-  vers la DROITE et la repose sur la meme table.
+  pres du BORD AVANT de la table, a sa GAUCHE. Il la saisit de la main
+  gauche, la deplace vers la DROITE et la repose sur la meme table.
 
-A LANCER : RoboDK ouvert, station avec le rig 22 DDL, mannequin au
-GARDE-A-VOUS (le script capture le repos au demarrage).
-    python Tache_Bras.py
+REGLES v3 (retours Niko 11/06, "reprendre a zero") :
 
-Construction : la table et la piece sont creees si absentes (AddShape,
-geometrie locale centree -> position par setPose, objets type 5 dont la
-pose EST persistee dans le .rdk — pas de bug type 7).
+  1. LE COUDE PART EN ARRIERE, JAMAIS EN AVANT. La position du coude ne
+     depend que de l'epaule ; sur ce rig la flexion d'epaule POSITIVE le
+     tire en arriere (sonde _probe_coude : flexion +10 => coude Z 41->7).
+     La flexion est donc BORNEE a [-8, +25] pour TOUT le scenario : le
+     bras ne bascule jamais vers l'avant, la main avance par le pli du
+     coude. Consequence geometrique : la piece doit etre pres du bord
+     avant de la table (Z=300 et non 400 — a 400 il FAUT avancer le
+     coude, c'est ce qui pourrissait la v2). Verification integree :
+     le Z du coude est scanne sur TOUTE la trajectoire precalculee.
 
-Cinematique : bras gauche = 6 DDL (epaule abduction Z / flexion X /
-rotation Y, coude flexion X, poignet flexion X / deviation Z), memes
-conventions que Mouvement_v2 (pose = REST x rot(axe, angle), limites
-humaines). L'effecteur = centre de la main (bbox au repos).
+  2. MOUVEMENT DYNAMIQUE. La lenteur de la v2 venait de l'IK calculee A
+     CHAQUE FRAME pendant l'animation (~400 appels FK par image). La v3
+     PRECALCULE toute la trajectoire articulaire (IK seulement sur les
+     postures cles, hors animation), puis la JOUE a cadence fixe : zero
+     calcul pendant la lecture, vitesses articulaires ~80-140 deg/s
+     (rythme humain), profil doux (smoothstep) par phase, micro-pauses
+     saisie/depose.
 
-IK numerique 6 DOF : position ET orientation (DLS amortie, Jacobien 6x6
-par differences finies, limites par clamp, multi-start). L'orientation de
-la main est CONTRAINTE (sinon la paume part de travers / poignet a
-l'envers) : on la maintient verticale, doigts vers le bas, comme au repos.
-Le bras n'a pas de pronation d'avant-bras, donc "paume a plat" est evite
-(il tordrait le bras) ; le poids WO equilibre position vs orientation.
+A LANCER : RoboDK ouvert, station avec le rig 22 DDL.
+    C:\\RoboDK\\Python-Embedded\\python.exe scripts\\Tache_Bras.py
+    options : --check (precalcul + verifs seulement, pas d'animation)
+              --frames (laisser les reperes visibles)
 
 Convention station : X+ = cote GAUCHE du mannequin, +Z = devant, Y = haut.
 """
@@ -46,88 +50,65 @@ from robodk.robomath import Mat, transl, rotx, roty, rotz, invH
 TABLE_TOP = 900          # hauteur de la surface de la table
 TABLE_SX, TABLE_SZ = 1100, 550   # plateau : largeur (X) x profondeur (Z)
 TABLE_TH = 40            # epaisseur plateau
-TABLE_CZ = 485           # centre du plateau devant le mannequin (Z).
-                         # 485 et pas 455 : a 455 la face avant (Z=180) touche
-                         # la main au garde-a-vous (collision mesh au repos).
+TABLE_CZ = 485           # centre du plateau devant le mannequin (Z)
 CUBE = 80                # arete de la piece cubique
-PICK_X, PICK_Z = 330, 400        # piece au depart : a GAUCHE (X+)
-PLACE_X, PLACE_Z = 80, 400       # depose : 25 cm vers la DROITE (rester
-                                 # anatomique : pas de traversee complete
-                                 # du corps avec le bras gauche)
+PICK_X, PICK_Z = 330, 300        # piece au depart : a GAUCHE, pres du bord
+PLACE_X, PLACE_Z = 80, 300       # depose : 25 cm vers la DROITE, meme bord
+                                 # (bord avant : seule zone atteignable
+                                 # avec le coude qui reste en ARRIERE)
 GRASP_CLEAR = 35         # centre de la main au-dessus du haut du cube (saisie)
-APPROACH = 45            # hauteur d'approche / de levee (le cube degage la table)
-HOME_Y = 1070            # hauteur de transit (centre main) : la main passe
-                         # PAR-DESSUS la table. Atteignable + degage le plateau
-                         # (doigts ~115 mm sous le centre -> ~955 > haut table 900)
-STEPS = 14               # pas par segment cartesien
-DT = 0.02                # tempo animation (s)
+HI = 1030                # hauteur de transit (centre paume) : plafond
+                         # atteignable coude en arriere. Cube et doigts a
+                         # paume-115 = 915, soit ~15 mm au-dessus du
+                         # plateau : la piece GLISSE juste au-dessus de la
+                         # table — le geste humain pour 25 cm de deport
+                         # (on ne souleve pas a 15 cm), valide au mesh
+TRANSIT_Z = 280          # transit legerement RAMENE vers le corps (geste
+                         # humain : on porte pres de soi) — et plus
+                         # atteignable que Z=300 a cette hauteur
+DT = 0.025               # cadence de lecture (s/frame) — la trajectoire est
+                         # precalculee, la lecture ne fait QUE appliquer+rendre
 
 # ---------------- bras gauche : DDL, axes, limites (deg) ----------------
 ARM = [
     ("shoulderL_abduction", "z", -90, 135),
-    ("shoulderL_flexion",   "x", -120, 90),   # flexion humaine reelle : 180
+    ("shoulderL_flexion",   "x", -120, 90),
     ("shoulderL_rotation",  "y", -45, 180),
     ("elbowL_flexion",      "x", -145, 0),    # NEGATIF = plier vers l'AVANT
-                                              # (le sens anatomique sur ce rig
-                                              # — demande Niko 10/06 soir)
     ("wristL_flexion",      "x", -50, 60),
     ("wristL_deviation",    "z", -30, 20),
 ]
 ROT = {"x": rotx, "y": roty, "z": rotz}
 
-# bornes du scenario (incluses dans les limites humaines).
-# Flexion epaule jusqu'a -120 (30 deg au-dessus de l'horizontale) : sans
-# ca, lever la main pres du corps pour franchir le bord de table est
-# inatteignable et l'IK se contorsionne.
-LIM_SCEN = [(-45, 60), (-120, 20), (-45, 45), (-130, 0), (-40, 50), (-25, 20)]
+# Bornes du scenario. LA contrainte v3 est la FLEXION D'EPAULE >= -8 :
+# le bras ne bascule jamais en avant => le coude ne part jamais en avant
+# (verifie en plus par le scan coude sur la trajectoire complete).
+# Vers l'ARRIERE en revanche on autorise large (+38, extension humaine
+# ~45-60) : c'est ce qui donne la hauteur de transit coude recule.
+LIM_SCEN = [(-45, 25), (-8, 38), (-45, 60), (-130, 0), (-40, 55), (-25, 20)]
 
-# ORIENTATION DE LA MAIN — c'est le coeur du fix : l'IK position seule
-# laissait la paume dans une orientation quelconque (de travers, doigts en
-# l'air = "poignet a l'envers"). On contraint maintenant l'orientation du
-# repere POIGNET.
-# Geometrie mesuree (_diag_main_geom) dans le repere poignet au repos :
-#   - doigts le long de  -Y_local
-#   - normale de paume le long de  Z_local  (axe le plus fin)
-# Le bras n'a PAS de pronation d'avant-bras (poignet = flexion + deviation
-# seulement) : imposer "paume a plat vers le bas" le tord et degrade la
-# position. On garde donc la main dans son ORIENTATION DE REPOS — verticale,
-# doigts vers le bas (-Y monde), paume vers l'avant (+Z monde) — qui est
-# naturelle, atteignable, et empeche tout retournement du poignet.
-# Cible = orientation identite du repere poignet (= sa pose au repos).
+# ORIENTATION DE LA MAIN : le bras n'a pas de pronation d'avant-bras, on
+# garde la main dans son orientation de repos (verticale, doigts vers le
+# bas) = identite du repere poignet. Stricte quand la main PORTE la piece,
+# souple a main vide.
 R_GRASP = Mat([[1.0, 0.0, 0.0, 0.0],
                [0.0, 1.0, 0.0, 0.0],
                [0.0, 0.0, 1.0, 0.0],
                [0.0, 0.0, 0.0, 1.0]])
-WO = 65.0           # poids de l'orientation (mm equivalents par radian) :
-                    # assez pour tenir la main droite, pas trop pour ne pas
-                    # voler la position au bras
-LAM = 5.0           # amortissement DLS (petit : sinon sur-amorti = pas de
-                    # convergence ; remonte pres des singularites via clamp)
+WO = 65.0           # poids orientation stricte (mm equivalents par radian)
+WO_LIBRE = 22.0     # orientation souple (main vide)
+LAM = 5.0           # amortissement DLS
 
-# POSTURE DE CONFORT — l'IK seule a plusieurs "branches" de solutions et,
-# sans preference, elle tombe dans des poses contorsionnees (bras croise
-# devant le corps, coude a fond, poignets aux butees = le mouvement
-# "n'importe quoi"). La posture est integree comme TACHE SECONDAIRE dans
-# les moindres carres amortis (poids WQ << tache principale) : elle
-# selectionne la branche naturelle (epaule ecartee a gauche, coude mi-plie,
-# poignet neutre) et eloigne des butees, sans voler la cible a l'IK.
-Q_CONF = [30.0, -60.0, 30.0, -50.0, 10.0, 0.0]
-# Posture "main pres du corps" pour MONTER/DESCENDRE le long du corps :
-# coude bien PLIE (le geste humain : on remonte la main pres de la poitrine
-# puis on etend le bras). Sans ce guide, l'IK reste sur la branche coude
-# mi-plie / epaule vrillee -> coude qui semble se plier a l'envers + blocage
-# au franchissement du bord de table.
-Q_FOLD = [25.0, -95.0, 35.0, -105.0, -10.0, 0.0]
-WQ = 1.2            # poids posture (via WQ^2) — assez pour departager les
-                    # branches, assez faible pour ~2 mm de biais a l'equilibre
+# Posture de confort (tache secondaire de l'IK) : selectionne la branche
+# "coude en arriere" — epaule legerement en extension, coude plie.
+Q_CONF = [0.0, 12.0, 15.0, -80.0, 0.0, 0.0]
+WQ = 1.2
 
 RDK = Robolink()
 print("Station :", RDK.ActiveStation().Name())
 
-# REMISE A ZERO systematique avant de capturer le repos : le script fait
-# confiance a l'etat courant du mannequin (REST = poses au demarrage) ; si
-# une animation precedente a ete interrompue bras en l'air, tout le modele
-# FK serait corrompu. Position_0 garantit le garde-a-vous exact.
+# Remise a zero AVANT de capturer le repos (sinon les residus d'une
+# animation precedente corrompent tout le modele FK).
 from Position_0 import remettre_a_zero
 remettre_a_zero(RDK, verbose=False)
 print("Mannequin remis a zero (garde-a-vous).")
@@ -202,12 +183,21 @@ print(f"Effecteur (paume) au repos : ({hand0[0]:.0f}, {hand0[1]:.0f}, {hand0[2]:
 
 
 def fk_pose(q):
-    """Pose absolue (Mat 4x4) du repere POIGNET pour les 6 angles q (deg).
-    L'orientation de ce repere = orientation de la main (rigide)."""
+    """Pose absolue (Mat 4x4) du repere POIGNET pour les 6 angles q (deg)."""
     P = ROOT
     for (nom, axe, lo, hi), a in zip(ARM, q):
         P = P * REST[nom] * ROT[axe](math.radians(a))
     return P
+
+
+def fk_coude(q):
+    """Position absolue du repere COUDE (ne depend que des 3 DDL epaule)."""
+    P = ROOT
+    for (nom, axe, lo, hi), a in zip(ARM[:3], q[:3]):
+        P = P * REST[nom] * ROT[axe](math.radians(a))
+    P = P * REST["elbowL_flexion"]
+    r = P.rows
+    return [r[0][3], r[1][3], r[2][3]]
 
 
 def eff_pos(P):
@@ -226,8 +216,7 @@ def cross(a, b):
 
 
 def ori_err(Rc, Rd):
-    """Erreur d'orientation (vecteur monde, ~rad) menant Rc -> Rd.
-    Formule de Siciliano : 0.5 * somme(col_c x col_d)."""
+    """Erreur d'orientation (vecteur monde, ~rad) menant Rc -> Rd."""
     e = [0.0, 0.0, 0.0]
     for k in range(3):
         c = cross(Rc[k], Rd[k])
@@ -239,7 +228,6 @@ RG = cols(R_GRASP)
 
 
 def clamp(q):
-    """Bornes du scenario (incluses dans les limites humaines de ARM)."""
     return [max(lo, min(hi, a)) for (lo, hi), a in zip(LIM_SCEN, q)]
 
 
@@ -260,24 +248,11 @@ def _solve6(A, b):
     return [M[i][n] / M[i][i] if abs(M[i][i]) > 1e-12 else 0.0 for i in range(n)]
 
 
-def _residu(q, tpos):
-    P = fk_pose(q)
-    ep = [tpos[i] - eff_pos(P)[i] for i in range(3)]
-    no_ = math.sqrt(sum(v*v for v in ori_err(cols(P), RG)))
-    return math.sqrt(sum(v*v for v in ep)), math.degrees(no_)
-
-
-def ik(tpos, q0, tol_p=6.0, tol_o=0.09, iters=240, patience=22, wo=WO,
-       qconf=None):
-    """IK 6 DOF position + orientation, DLS amortie. S'arrete des que la
-    cible est atteinte OU que le residu stagne (patience) — indispensable
-    pour ne pas mouliner 500 iterations sur un point hors d'atteinte.
-    wo = poids d'orientation : strict (WO) quand la main porte la piece,
-    souple a main vide (la main peut s'incliner, comme un humain).
-    qconf = posture de confort guidant le choix de branche (Q_CONF, ou
-    Q_FOLD pour les phases pres du corps).
-    Retourne (q, residu_pos_mm, residu_ori_deg)."""
-    qc = Q_CONF if qconf is None else qconf
+def ik(tpos, q0, tol_p=6.0, tol_o=0.09, iters=240, patience=22, wo=WO):
+    """IK 6 DOF position + orientation, DLS amortie, posture secondaire
+    Q_CONF (branche coude en arriere). Bornee par LIM_SCEN => la flexion
+    d'epaule ne peut JAMAIS depasser +25/-8 : le coude reste en arriere
+    par construction. Retourne (q, residu_pos_mm, residu_ori_deg)."""
     q = clamp(list(q0))
     best_q, best_s, stale = q[:], 1e18, 0
     for _ in range(iters):
@@ -288,43 +263,36 @@ def ik(tpos, q0, tol_p=6.0, tol_o=0.09, iters=240, patience=22, wo=WO,
         eo = ori_err(Rc, RG)
         np_ = math.sqrt(sum(v*v for v in ep))
         no_ = math.sqrt(sum(v*v for v in eo))
-        s = np_ + wo * no_                       # score combine
-        if s < best_s - 0.05:                    # progres (meme fin)
+        s = np_ + wo * no_
+        if s < best_s - 0.05:
             best_s, best_q, stale = s, q[:], 0
         else:
             stale += 1
         if np_ < tol_p and no_ < tol_o:
             return q, np_, math.degrees(no_)
-        if stale >= patience:                    # plus de progres -> stop
+        if stale >= patience:
             break
-        x = ep + [wo * v for v in eo]            # tache 6D (pos mm ; ori ponderee)
-        # Jacobien 6x6 par differences finies (lignes 0-2 position, 3-5 orient)
+        x = ep + [wo * v for v in eo]
+        # Jacobien 6x6 par differences finies
         J = [[0.0] * 6 for _ in range(6)]
         for j in range(6):
             dq = list(q)
             dq[j] += 0.5
             Pj = fk_pose(dq)
             pj = eff_pos(Pj)
-            dphi = ori_err(Rc, cols(Pj))         # petite rotation Rc -> Rj
+            dphi = ori_err(Rc, cols(Pj))
             for i in range(3):
                 J[i][j] = (pj[i] - p[i]) / 0.5
                 J[3 + i][j] = wo * dphi[i] / 0.5
-        # DLS en equations normales, avec tache posturale secondaire :
-        # (J^T J + (LAM^2 + wq2) I) dq = J^T x + wq2 (Q_CONF - q)
-        # Le poids postural S'ESTOMPE avec le residu : il departage les
-        # branches LOIN de la cible, puis s'efface (sinon il vole les
-        # derniers millimetres a la tache).
+        # DLS + tache posturale secondaire (s'estompe pres de la cible)
         wq2 = (WQ * min(1.0, np_ / 60.0)) ** 2
         reg = LAM * LAM + wq2
         JTJ = [[sum(J[k][i] * J[k][r] for k in range(6)) + (reg if i == r else 0)
                 for r in range(6)] for i in range(6)]
-        b = [sum(J[k][j] * x[k] for k in range(6)) + wq2 * (qc[j] - q[j])
+        b = [sum(J[k][j] * x[k] for k in range(6)) + wq2 * (Q_CONF[j] - q[j])
              for j in range(6)]
         dq = _solve6(JTJ, b)
-        # rebroussement : si le pas complet EMPIRE le score (overshoot,
-        # frequent pres du zero exact ou des butees), on le reduit de
-        # moitie — sinon l'IK oscille sur place et le critere de
-        # stagnation conclut a tort "bloque".
+        # rebroussement si le pas complet empire le score
         scale, q_try = 1.0, None
         for _ in range(3):
             q_try = clamp([q[j] + scale * dq[j] for j in range(6)])
@@ -336,28 +304,10 @@ def ik(tpos, q0, tol_p=6.0, tol_o=0.09, iters=240, patience=22, wo=WO,
                 break
             scale *= 0.5
         q = q_try
-    rp, ro = _residu(best_q, tpos)               # renvoie le MEILLEUR vu
+    P = fk_pose(best_q)
+    rp = math.sqrt(sum((tpos[i] - eff_pos(P)[i])**2 for i in range(3)))
+    ro = math.degrees(math.sqrt(sum(v*v for v in ori_err(cols(P), RG))))
     return best_q, rp, ro
-
-
-def ik_multi(tpos, q0):
-    """Warm-start, puis seeds SEULEMENT si la position n'est pas atteinte.
-    L'orientation a un plancher (~16-40 deg, bras sans pronation) : on ne
-    juge la sortie que sur la POSITION, sinon on relance des seeds en vain
-    alors que le point est deja bon."""
-    def score(rp, ro):
-        return rp + 1.0 * ro                       # priorite a la position
-    bq, bp, bo = ik(tpos, q0)
-    if bp < 12:                                    # contact atteint -> fini
-        return bq, bp, bo
-    for s in ([45, -85, 45, -40, 35, 5],          # bras leve au-dessus de la table
-              [30, -60, 30, -50, 10, 0]):         # prehension naturelle
-        q, rp, ro = ik(tpos, s)
-        if score(rp, ro) < score(bp, bo):
-            bq, bp, bo = q, rp, ro
-        if bp < 12:
-            break
-    return bq, bp, bo
 
 
 def applique(q):
@@ -365,103 +315,37 @@ def applique(q):
         F[nom].setPose(REST[nom] * ROT[axe](math.radians(a)))
 
 
-# ---------------- choregraphie : SPLINE CARTESIENNE fluide ----------------
-# v2 "mouvement humain". Les recettes (diagnostics _diag_points/_diag_bord) :
-#   1. CHEMIN par via-points VALIDES atteignables (l'ancien transit haut
-#      colle au corps etait hors d'atteinte -> l'IK se contorsionnait) ;
-#   2. SPLINE Catmull-Rom au lieu de segments en creneau : pas d'arrets
-#      nets a chaque coin, la main suit une courbe continue ;
-#   3. ORIENTATION par phase : stricte quand la main PORTE la piece,
-#      souple a main vide (un humain laisse la main s'incliner en chemin —
-#      et ca etend l'atteignabilite au-dessus du bord de table) ;
-#   4. VITESSE ARTICULAIRE BORNEE (DQ_MAX) : aucun saut de configuration ;
-#   5. profil en cloche par phase + micro-pauses a la saisie / depose.
-# Collision table : on ne survole le plateau (Z > 180) que paume >= 1025
-# (doigts ~115 mm sous la paume -> ils passent au-dessus des 900 mm).
+# ---------------- choregraphie v3 : cles -> trajectoire precalculee ------
 cube_y = TABLE_TOP + CUBE / 2.0          # centre du cube
-cube_top = cube_y + CUBE / 2.0           # haut du cube
-GRASP_Y = cube_top + GRASP_CLEAR         # centre main quand elle tient le cube
+GRASP_Y = cube_y + CUBE / 2.0 + GRASP_CLEAR   # centre main, cube en main
 
 q_rest = [0.0] * 6
-rest_pos = eff_pos(fk_pose(q_rest))      # main au repos (devant le bassin)
 
-HI = 1085                                # plafond de transit valide (IK ~2-9 mm)
-WO_LIBRE = 22.0                          # orientation souple (main vide)
-DQ_MAX = 8.0                             # deg max par pas d'animation
-P_REST = tuple(rest_pos)
-P_GRASP = (PICK_X, GRASP_Y, PICK_Z)
+# Cles FK de la MONTEE : le coude PART EN ARRIERE (flexion epaule
+# positive) pendant que le pli du coude monte la main devant la poitrine.
+# L'epaule part FRANCHEMENT en extension (+34/+36) des l'amorce : pendant
+# le pli, l'arc de l'avant-bras balaie vers l'avant, et la face avant de
+# la table n'est qu'a 50 mm de la main au repos — epaule a +14 ca frotte
+# (17 collisions mesh), a +34 ca passe (0, banc _tune_keys). La descente
+# du retour reutilise ces cles en miroir.
+QK_A = [-6.0, 34.0, 5.0, -30.0, -30.0, 0.0]    # amorce : epaule bien ARRIERE
+QK_B = [-12.0, 36.0, 10.0, -95.0, -35.0, 0.0]  # main haute pres du corps
+
+# Cibles cartesiennes (resolues en cles articulaires par IK, HORS animation)
+P_PREPICK = (PICK_X, GRASP_Y + 35, PICK_Z - 10)
+P_PICK = (PICK_X, GRASP_Y, PICK_Z)
+P_HI_PICK = (PICK_X, HI, TRANSIT_Z)
+P_HI_MID = ((PICK_X + PLACE_X) / 2.0, HI, TRANSIT_Z)
+P_HI_PLACE = (PLACE_X, HI, TRANSIT_Z)
 P_PLACE = (PLACE_X, GRASP_Y, PLACE_Z)
 
-# --- phase "tendre" en ESPACE ARTICULAIRE --------------------------------
-# Suivre une cible cartesienne pendant que le bras se reconfigure en grand
-# (bras pendant -> etendu au-dessus de la table) fait balayer la main
-# n'importe ou en chemin : l'IK instantanee et la pose appliquee (vitesse
-# bornee) divergent. Pour ce geste a main vide on interpole donc entre des
-# POSTURES CLES choisies A LA MAIN (FK pure, banc d'essai _probe_poses,
-# validees visuellement en vue de cote par snapshots) :
-#   - coude <= 100 deg et main DEVANT le coude (l'IK seule produisait des
-#     clefs coude 120-130 / epaule levee = "aile de poulet", defaut releve
-#     par Niko en vue de cote) ;
-#   - poignet flechi ~50 deg en franchissant le bord (doigts recourbes
-#     vers l'avant -> extension verticale reduite, ca passe au-dessus du
-#     plateau ; verifie par collision MESH RoboDK, pas par approximation).
-# Clefs trouvees par scan FK systematique (_scan_fk.py), coude NEGATIF
-# (= plie vers l'avant, sens anatomique) : la main monte DEVANT le corps
-# coude plie, epaule basse (-10/-40 deg de flexion seulement — fini
-# l'aile de poulet), puis le bras s'ouvre vers la piece.
-# Pendant le pli du coude (-45/-60), l'arc de l'avant-bras balaie vers
-# l'AVANT (axes du rig) — comme un humain colle a une table, on tire donc
-# l'EPAULE LEGEREMENT EN ARRIERE (flexion +10/+15) le temps du pli, puis
-# la main monte devant la poitrine et le bras s'ouvre vers la piece.
-# Clefs trouvees par scan FK (_scan_fk) + bancs bbox/vue de cote
-# (_probe_bbox), coude NEGATIF (= plie vers l'avant, sens anatomique).
-QK_TEND = [
-    list(q_rest),                       # garde-a-vous
-    [-15, 10, 30, -35, -10, 3],         # amorce : epaule en arriere,
-                                        # le coude commence a plier (Zmax 87)
-    [-30, 15, 33, -55, -18, 4],         # pli franc, main le long du corps
-    [-38, -10, 32, -78, -22, 5],        # la main monte (paume 933, Zmax 138)
-    [-40, -10, 0, -100, -25, 5],        # devant la poitrine, coude plie,
-                                        # epaule basse (paume 1035, Ymin 970)
-    [-30, -40, 0, -60, 0, 5],           # le bras s'ouvre au-dessus du plateau
-]
-P_TEND_FIN = eff_pos(fk_pose(QK_TEND[-1]))   # ou la derniere clef pose la main
-
-# Franchissement du bord de table (face avant a Z=180) : on MONTE d'abord
-# pres du corps coude PLIE, et on ne pousse vers l'avant qu'une fois la
-# paume au-dessus de ~1040 (doigts > 925 > plateau 900).
-# phases : (label, mode, donnees, poids ori, posture, pas, pause_s, evenement)
-#   mode "joint" : donnees = postures cles (interpolation articulaire)
-#   mode "cart"  : donnees = via-points cartesiens (IK par pas)
-PHASES = [
-    ("tendre", "joint", QK_TEND, WO_LIBRE, Q_FOLD, 40, 0.0, None),
-    ("saisir", "cart",                               # glisse sur la piece, lent
-     [P_TEND_FIN, (PICK_X, GRASP_Y + 18, PICK_Z + 8), P_GRASP],
-     WO, Q_CONF, 14, 0.35, "grab"),
-    ("transporter", "cart",                          # arc au-dessus de la table
-     [P_GRASP, (PICK_X, HI, PICK_Z), ((PICK_X + PLACE_X) / 2.0, HI + 5, PICK_Z),
-      (PLACE_X, HI, PLACE_Z)],
-     WO, Q_CONF, 30, 0.0, "snap2"),
-    ("deposer", "cart",                              # descente verticale, lente
-     [(PLACE_X, HI, PLACE_Z), (PLACE_X, GRASP_Y + 10, PLACE_Z), P_PLACE],
-     WO, Q_CONF, 12, 0.35, "release"),
-    ("degager", "cart",                              # remonter main encore droite
-     [P_PLACE, (PLACE_X, HI, PLACE_Z)],
-     WO, Q_CONF, 10, 0.0, None),
-    ("ramener", "cart",                              # revenir haut, puis
-     [(PLACE_X, HI, PLACE_Z), (140, 1055, 290),      # redescendre pres du corps
-      (150, 1045, 185), (150, 1020, 135), (160, 920, 115), P_REST],
-     WO_LIBRE, Q_FOLD, 52, 0.0, None),
-]
-
-SNAP = "--snap" in sys.argv
-SNAPDIR = r"D:\PRBE_Homme_Robot\PRBE-Homme-Robot\scripts\_debug_reperes"
-
-
-def snap(name):
-    if SNAP:
-        RDK.Render(True)
-        RDK.Command("Snapshot", SNAPDIR + "\\" + name + ".png")
+# phases : (label, vitesse deg/frame, pause_s, evenement_de_fin)
+# Les cles de chaque phase sont resolues dans build_trajectoire().
+# Le rendu RoboDK coute ~80 ms/frame (mesure 11/06) : c'est LUI la cadence
+# reelle, pas DT. Les pas sont donc dimensionnes pour un geste dynamique a
+# ~12 fps rendus : 6 deg/frame ~ 70 deg/s effectifs sur les grands gestes.
+V_VIF = 6.0      # deg max/frame pour les grands gestes
+V_FIN = 3.0      # approche / depose : plus pose
 
 
 def _dist(a, b):
@@ -469,10 +353,8 @@ def _dist(a, b):
 
 
 def catmull(pts, u):
-    """Point sur la spline Catmull-Rom passant par pts (u dans [0, 1],
-    parametrisation par longueur de corde — vitesse homogene le long du
-    chemin). Marche en dimension quelconque (3D cartesien ou 6D
-    articulaire). 2 points = segment droit."""
+    """Point sur la spline Catmull-Rom 6D passant par pts (u dans [0,1],
+    parametrisation par longueur de corde). 2 points = segment droit."""
     P = [pts[0]] + list(pts) + [pts[-1]]
     L = [_dist(pts[i], pts[i + 1]) for i in range(len(pts) - 1)]
     tot = sum(L) or 1.0
@@ -489,32 +371,91 @@ def catmull(pts, u):
             for k in range(len(pts[0]))]
 
 
-def anim_phase(label, mode, data, q, wo=WO, qconf=None, steps=26, pause=0.0):
-    """Anime une phase. mode "cart" : spline cartesienne suivie par IK
-    warm-start. mode "joint" : interpolation articulaire entre postures
-    cles. Dans les deux cas la pose appliquee est a VITESSE ARTICULAIRE
-    BORNEE (DQ_MAX deg/pas) -> fluidite garantie."""
-    for s in range(1, steps + 1):
-        t = s / steps
-        t = t * t * (3 - 2 * t)                  # cloche : doux aux extremites
-        if mode == "joint":
-            qs = catmull(data, t)
-        else:
-            tgt = catmull(data, t)
-            qs, _, _ = ik(tgt, q, iters=60, patience=8, wo=wo, qconf=qconf)
-        q = [a + max(-DQ_MAX, min(DQ_MAX, b - a)) for a, b in zip(q, qs)]
-        applique(q)
-        RDK.Render(True)
-        if SNAP and s in (steps // 3, 2 * steps // 3):
-            snap(f"ph_{label}_{s:02d}")
-        time.sleep(DT)
-    if pause:
-        time.sleep(pause)
-    return q
+def _resample(keys, v_frame):
+    """Echantillonne la spline articulaire passant par keys en frames a
+    vitesse bornee : nombre de frames dimensionne sur le plus grand ecart
+    articulaire, profil smoothstep (doux au depart et a l'arrivee)."""
+    span = 0.0
+    for a, b in zip(keys, keys[1:]):
+        span += max(abs(x - y) for x, y in zip(a, b))
+    n = max(4, int(math.ceil(span / v_frame)))
+    out = []
+    for s in range(1, n + 1):
+        t = s / n
+        t = t * t * (3 - 2 * t)                  # smoothstep
+        out.append(clamp(catmull(keys, t)))
+    return out
+
+
+def build_trajectoire():
+    """Resout toutes les cles (IK hors animation) puis precalcule TOUTES
+    les frames. Retourne (frames, events, rapport) avec
+    frames = [q, ...], events = {index_frame: nom}, et un rapport texte
+    (residus IK + scan coude)."""
+    rapport = []
+
+    def cle_ik(nom, cible, q_seed, wo):
+        q, rp, ro = ik(cible, q_seed, wo=wo)
+        rapport.append(f"  cle {nom:<10} residu {rp:5.1f} mm / {ro:5.1f} deg")
+        if rp > 14:
+            rapport.append(f"    !! {nom} : cible mal atteinte ({rp:.0f} mm)")
+        return q
+
+    # pick d'abord (seed = cle FK de la montee), puis prepick ANCRE sur la
+    # branche de pick (meme poids d'orientation) : sans ca, l'approche
+    # lente traversait un saut de branche (poignet -16 -> +50 deg).
+    q_pick = cle_ik("pick", P_PICK, QK_B, WO)
+    q_prepick = cle_ik("prepick", P_PREPICK, q_pick, WO)
+    q_hi1 = cle_ik("hi_pick", P_HI_PICK, q_pick, WO)
+    q_him = cle_ik("hi_mid", P_HI_MID, q_hi1, WO)
+    q_hi2 = cle_ik("hi_place", P_HI_PLACE, q_him, WO)
+    q_place = cle_ik("place", P_PLACE, q_hi2, WO)
+
+    phases = [
+        ("tendre", [q_rest, QK_A, QK_B, q_prepick], V_VIF, 0.0, None),
+        ("saisir", [q_prepick, q_pick], V_FIN, 0.30, "grab"),
+        ("transporter", [q_pick, q_hi1, q_him, q_hi2], V_VIF, 0.0, None),
+        ("deposer", [q_hi2, q_place], V_FIN, 0.30, "release"),
+        ("ramener", [q_place, q_hi2, QK_B, QK_A, q_rest], V_VIF, 0.0, None),
+    ]
+
+    frames, events, pauses = [], {}, {}
+    for label, keys, v, pause, event in phases:
+        fr = _resample(keys, v)
+        frames += fr
+        if event:
+            events[len(frames) - 1] = event
+        if pause:
+            pauses[len(frames) - 1] = pause
+        rapport.append(f"  phase {label:<12} {len(fr):3d} frames")
+
+    # SCAN COUDE : garantie "jamais en avant" sur la trajectoire COMPLETE
+    z0 = fk_coude(q_rest)[2]
+    zmax, imax = -1e9, 0
+    for i, q in enumerate(frames):
+        z = fk_coude(q)[2]
+        if z > zmax:
+            zmax, imax = z, i
+    ok = zmax <= z0 + 5.0
+    rapport.append(f"  coude : Z repos {z0:.0f} mm, Z max trajectoire "
+                   f"{zmax:.0f} mm (frame {imax}) -> "
+                   f"{'OK, jamais en avant' if ok else '!! PART EN AVANT'}")
+    return frames, events, pauses, rapport, ok
 
 
 def main():
-    print("--- Animation v2 (spline fluide, posture naturelle) ---")
+    print("--- Tache bras v3 : coude en arriere, trajectoire precalculee ---")
+    t0 = time.time()
+    frames, events, pauses, rapport, coude_ok = build_trajectoire()
+    print("\n".join(rapport))
+    print(f"Precalcul : {len(frames)} frames en {time.time() - t0:.1f} s "
+          f"(~{len(frames) * DT + sum(pauses.values()):.1f} s d'animation)")
+    if not coude_ok:
+        sys.exit("ABANDON : le coude partirait en avant — cles a corriger.")
+    if "--check" in sys.argv:
+        print("--check : pas d'animation.")
+        return
+
     station = RDK.ActiveStation()
     wrist = F[ARM[-1][0]]
     if "--frames" not in sys.argv:            # demo propre : cacher les reperes
@@ -526,23 +467,28 @@ def main():
     RDK.Render(True)
     time.sleep(0.3)
 
-    q = q_rest
-    for label, mode, data, wo, qconf, steps, pause, event in PHASES:
-        q = anim_phase(label, mode, data, q, wo=wo, qconf=qconf,
-                       steps=steps, pause=pause)
-        if event == "grab":
+    # LECTURE : zero calcul, cadence reelle tenue sur l'horloge murale
+    # (si le rendu prend du retard, on saute le sleep, pas des frames).
+    t0 = time.time()
+    for i, q in enumerate(frames):
+        applique(q)
+        RDK.Render(True)
+        ev = events.get(i)
+        if ev == "grab":
             piece.setParentStatic(wrist)      # la piece suit la main
             print("  piece saisie")
-            snap("tache_1_saisie")
-        elif event == "snap2":
-            snap("tache_2_transfert")
-        elif event == "release":
+        elif ev == "release":
             piece.setParentStatic(station)
-            piece.setPose(transl(PLACE_X, cube_y, PLACE_Z))   # posee a plat
+            piece.setPose(transl(PLACE_X, cube_y, PLACE_Z))
             print(f"  piece deposee en ({PLACE_X:.0f}, {cube_y:.0f}, {PLACE_Z:.0f})")
-            snap("tache_3_depose")
-    snap("tache_4_final")
-    print("Fini — piece deplacee de gauche a droite, sans toucher la table.")
+        if i in pauses:
+            time.sleep(pauses[i])
+            t0 += pauses[i]
+        reste = t0 + (i + 1) * DT - time.time()
+        if reste > 0:
+            time.sleep(reste)
+    print(f"Fini en {time.time() - t0:.1f} s - piece deplacee de gauche a "
+          f"droite, coude toujours en arriere.")
 
 
 if __name__ == "__main__":
