@@ -5,7 +5,7 @@ _Source : transcript Fathom (https://fathom.video/calls/707467582, ~55 min) + no
 **Participants :** Niko, équipe PRBE (Luc, Alex), encadrants (Francesco Ciampi, Thierno Diallo)
 **Type :** session de travail 14 h (3-4 h, licence RoboDK temporaire fournie) — enregistrement Fathom de ~55 min
 
-> **Note transcription :** Fathom a étiqueté tout le monde « Nikoloz Khachidze » et l'audio est très dégradé (mélange FR/EN, traduction auto). À lire avec recul. Décodages : **« MLX » / « Alise » = la ligne ALIX**, **« Submega » = Supméca**, les « Fathom » répétés = l'outil d'enregistrement qui bave dans le texte. Les notes de Luc ont servi à recouper et préciser les points ambigus.
+> **Note transcription :** Fathom a étiqueté tout le monde « Nikoloz Khachidze » et l'audio est très dégradé (mélange FR/EN, traduction auto). À lire avec recul. Décodages : **« MLX » / « Alise » = la ligne ALIX**, Supméca**, les « Fathom » répétés = l'outil d'enregistrement qui bave dans le texte. Les notes de Luc ont servi à recouper et préciser les points ambigus.
 
 ---
 
