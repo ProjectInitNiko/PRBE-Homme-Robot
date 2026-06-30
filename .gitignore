@@ -1,48 +1,32 @@
-# Python
+# === Python ===
 __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
 venv/
+envs/
 
-# IDE
+# === IDE / OS ===
 .vscode/
 .idea/
 *.swp
-
-# OS
 .DS_Store
 Thumbs.db
 
-# Contexte local Codex
+# === Contexte local Codex ===
 CONTEXTE_SECURITE.md
 
-# Conda envs (locales, jamais commit)
-envs/
-
-# Dépendance externe : on ne redistribue pas HMG (BSD-3, à cloner soi-même)
+# === Dépendance externe ===
+# HMG (BSD-3) : à cloner soi-même, non redistribué — voir "2 Codes/INSTALL.md"
 external/
 
-# Mannequins générés à la volée hors de examples/
+# === Mannequins URDF : ignorés sauf les modèles finaux versionnés ===
 *.urdf
-!examples/*.urdf
+!2 Codes/modeles/*.urdf
 
-# Captures d'ecran et scripts jetables des sessions de mise au point (locaux)
-examples/*.png
-scripts/*.png
-scripts/_*
-
-# Stations RoboDK et exports 3D locaux (poses non persistees — bug type 7 ;
-# les stations sont deposees sur Teams)
+# === Stations RoboDK : ignorées sauf les stations finales versionnées ===
 *.rdk
-examples/*.stl
-Simu ROBODK/
+!2 Codes/stations/*.rdk
 
-# Scripts de labo v1 (rig abandonne, conserves en local pour reference)
-scripts/Marche_RoboDK.py
-scripts/Moonwalk_RoboDK.py
-scripts/build_operator_v2.py
-scripts/exemple_bouger_humain.py
-scripts/moonwalk_lab.py
-scripts/restore_position_naturelle.py
-scripts/walk_human_robodk.py
+# === Archives locales (labo, builds, stations intermédiaires) : jamais commit ===
+Archivage/_local/

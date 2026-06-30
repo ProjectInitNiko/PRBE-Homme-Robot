@@ -13,73 +13,54 @@ Simulation du mouvement humain et interaction Homme-Robot dans **RoboDK**, dans 
 
 ## Verrou technique
 
-Aucun logiciel n'intègre proprement le mouvement d'un opérateur humain dans une simulation robotique de type RoboDK. Notre objectif : construire ce pont.
+Aucun logiciel n'intègre proprement le mouvement d'un opérateur humain dans une simulation robotique de type RoboDK. Notre objectif : construire ce pont — un opérateur anthropomorphique 22 DDL piloté dans RoboDK (marches + tâche de manipulation par cinématique inverse).
+
+## Organisation du dépôt
+
+Le dépôt est structuré par **type de livrable** pour en faciliter la lecture :
+
+| Dossier | Contenu |
+| --- | --- |
+| **`1 Matériel pédagogique/`** | Documents fournis par l'équipe encadrante : sujet PRBE, bibliographie, template de présentation Supméca |
+| **`2 Codes/`** | Codes (versions finales) : scripts RoboDK, modèles URDF, trajectoires, stations `.rdk` finales, fiche d'explication des codes |
+| **`3 Documents finaux/`** | Cahier des charges, rapport (PDF + source LaTeX), présentation, poster |
+| **`4 Captures d'écran/`** | Captures de résultats de la simulation (opérateur, marches, tâche bras, trajectoires) |
+| **`5 Vidéos/`** | Vidéos de la simulation |
+| **`Archivage/`** | Comptes-rendus de réunions, documents de travail et éléments intermédiaires hors des catégories ci-dessus |
+
+> `external/` (dépendance HMG) et `Archivage/_local/` (artefacts de labo) ne sont pas versionnés — voir `.gitignore`.
 
 ## Approche
 
 1. **Mannequin humain anthropomorphique** scalable au format URDF, généré via [HMG (Human Model Generator)](https://github.com/gbionics/human-model-generator) — IIT, BSD-3-Clause.
-2. **Import dans RoboDK** comme chaîne cinématique pilotable.
-3. **Animation du mouvement** : trois approches en évaluation
-	- analytique (trajectoires articulaires écrites à la main)
-	- IA (mapping depuis bases de données mocap)
-	- **cinématique inverse** (approche privilégiée — RoboDK natif, ou `ikpy` / `pinocchio`)
+2. **Import dans RoboDK** comme chaîne cinématique pilotable (rig à 22 DDL).
+3. **Animation du mouvement** : marches (militaire, avant, trajectoire externe) et tâche de manipulation du bras par **cinématique inverse** (DLS).
 
 ## Stack
 
-- **Python 3.11**
-- **conda / Miniconda** pour l'environnement (deps natives lourdes)
+- **Python 3.11** + **conda / Miniconda** (deps natives lourdes)
 - **HMG** : `numpy` + `urchin` + `idyntree` + `urdf-modifiers`
 - **RoboDK** + son API Python
 
-## Décisions v1
-
-- **Périmètre démo v1** : bras droit seulement (7 DDL), épine figée
-- **Base flottante** (pelvis) : décision après test import RoboDK
-- Voir [`docs/decisions-v1.md`](docs/decisions-v1.md) pour la justification
-
 ## Démarrage rapide
 
-Voir [INSTALL.md](INSTALL.md) pour le setup complet (Miniconda, env conda, clone HMG).
-
-Une fois installé :
+Voir [`2 Codes/INSTALL.md`](2%20Codes/INSTALL.md) pour le setup complet (Miniconda, env conda, clone HMG), puis [`2 Codes/USAGE.md`](2%20Codes/USAGE.md).
 
 ```bash
-# 1. Générer un mannequin
+# 1. Générer un mannequin (HMG cloné dans external/)
 cd external/human-model-generator/code
 conda run -n hmgenv --no-capture-output python main.py
 # (entrer un nom quand demandé, ex : Niko_v1)
 
-# 2. Visualiser
-cd ../../../scripts
+# 2. Visualiser un .urdf
+cd "../../../2 Codes/scripts"
 view_urdf_drop.bat   # drag & drop d'un .urdf dessus
 ```
 
-Ou pour visualiser l'exemple fourni :
+Ou pour visualiser le modèle fourni :
 
 ```bash
-scripts/view_Niko_v1.bat
-```
-
-## Structure du repo
-
-```
-.
-├── README.md                ← ce fichier
-├── INSTALL.md               ← setup complet (Miniconda, env, HMG)
-├── USAGE.md                 ← générer mannequin + visualiser + flux
-├── environment.yml          ← spécification env conda
-├── LICENSE                  ← MIT (notre code)
-├── docs/
-│   ├── architecture-hmg.md  ← pipeline HMG + 54 DDL + scaling π / De Leva
-│   └── decisions-v1.md      ← décisions techniques (bras droit, épine figée)
-├── scripts/
-│   ├── view_urdf.py         ← viewer iDynTree générique
-│   ├── view_Niko_v1.bat     ← raccourci sur l'exemple
-│   └── view_urdf_drop.bat   ← drag & drop d'un .urdf
-├── examples/
-│   └── Niko_v1.urdf         ← mannequin H=1.665 m, m=59 kg (chemins meshes relatifs)
-└── external/                ← (gitignored) emplacement pour cloner HMG
-    └── human-model-generator/
+"2 Codes/scripts/view_Niko_v1.bat"
 ```
 
 ## Crédits & licences
