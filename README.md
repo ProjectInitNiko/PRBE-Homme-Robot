@@ -1,15 +1,15 @@
 # PRBE Homme-Robot 2026
 
-Simulation du mouvement humain et interaction Homme-Robot dans **RoboDK**, dans le cadre du module **PRBE 2026** de l'ISAE-SUPMECA (sujet #47, plateforme [ALIX](https://alix.isae-supmeca.fr/)).
+Simulation du mouvement humain et interaction Homme-Robot dans **RoboDK**, dans le cadre du module **PRBE 2026** de l'ISAE-SUPMECA (sujet #47, plateforme [ALIX]).
 
 ## Équipe
 
-- **Niko Khachidze** ([@ProjectInitNiko](https://github.com/ProjectInitNiko))
-- **Luc**
-- **Alex**
+- **Nikoloz KHACHIDZE** 
+- **Luc FANTASIA**
+- **Alexande NOWAK**
 
 **Encadrants :** Francesco Ciampi, Thierno Diallo
-**Période :** mi-avril → fin juin 2026 (100 h autonomes + 14 h encadrées, soutenance fin juin)
+**Période :** mi-avril → fin juin 2026 (80 h autonomes / 14 h encadrées, soutenance fin juin)
 
 ## Verrou technique
 
